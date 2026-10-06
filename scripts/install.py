@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """
 Omarchy Dotfiles Installer / Restorer
-Restores all Omarchy shell plugins, shell.json, and HexaCore workstation.
+Restores all Omarchy shell plugins, shell.json, HexaCore workstation,
+Hyprland shortcuts/bindings, and shortcut helper scripts.
 """
 
 import os
@@ -15,12 +16,17 @@ from pathlib import Path
 DOTFILES_DIR = Path(__file__).resolve().parent.parent
 OMARCHY_PLUGINS_DEST = Path.home() / ".config" / "omarchy" / "plugins"
 OMARCHY_SHELL_DEST = Path.home() / ".config" / "omarchy" / "shell.json"
+OMARCHY_EXTENSIONS_DEST = Path.home() / ".config" / "omarchy" / "extensions"
+HYPR_DEST = Path.home() / ".config" / "hypr"
 BIN_DEST = Path.home() / ".local" / "bin"
-HYPR_BINDINGS = Path.home() / ".config" / "hypr" / "bindings.lua"
+HYPR_BINDINGS = HYPR_DEST / "bindings.lua"
 
 MANIFEST_PATH = DOTFILES_DIR / "omarchy" / "plugins" / "plugins.json"
 CUSTOM_PLUGINS_SRC = DOTFILES_DIR / "omarchy" / "plugins" / "custom"
 HEXACORE_SRC = DOTFILES_DIR / "hexacore"
+HYPR_SRC = DOTFILES_DIR / "hypr"
+SHORTCUT_SCRIPTS_SRC = DOTFILES_DIR / "shortcuts" / "scripts"
+OMARCHY_EXTENSIONS_SRC = DOTFILES_DIR / "omarchy" / "extensions"
 
 def run_cmd(cmd, cwd=None, check=True):
     res = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True)
@@ -86,6 +92,43 @@ def install_shell_config():
     else:
         print("    Warning: omarchy/shell.json not found in dotfiles.")
 
+def install_shortcuts():
+    print("==> Restoring Omarchy shortcuts & Hyprland bindings...")
+    HYPR_DEST.mkdir(parents=True, exist_ok=True)
+    BIN_DEST.mkdir(parents=True, exist_ok=True)
+    OMARCHY_EXTENSIONS_DEST.mkdir(parents=True, exist_ok=True)
+
+    # 1. Restore Hyprland configs (bindings.lua, hyprland.lua, autostart.lua)
+    for fname in ["bindings.lua", "hyprland.lua", "autostart.lua"]:
+        src_file = HYPR_SRC / fname
+        if src_file.exists():
+            dest_file = HYPR_DEST / fname
+            if dest_file.exists():
+                backup = dest_file.with_suffix(f".lua.bak.{int(datetime.now().timestamp())}")
+                shutil.copy2(dest_file, backup)
+            shutil.copy2(src_file, dest_file)
+            print(f"    Restored {dest_file}")
+
+    # 2. Restore Omarchy Menu extensions
+    src_menu = OMARCHY_EXTENSIONS_SRC / "omarchy-menu.jsonc"
+    if src_menu.exists():
+        dest_menu = OMARCHY_EXTENSIONS_DEST / "omarchy-menu.jsonc"
+        shutil.copy2(src_menu, dest_menu)
+        print(f"    Restored {dest_menu}")
+
+    # 3. Restore shortcut helper scripts to ~/.local/bin
+    if SHORTCUT_SCRIPTS_SRC.exists():
+        for script_path in SHORTCUT_SCRIPTS_SRC.iterdir():
+            if script_path.is_file():
+                dest_bin = BIN_DEST / script_path.name
+                shutil.copy2(script_path, dest_bin)
+                dest_bin.chmod(0o755)
+                print(f"    Installed shortcut helper: {script_path.name} -> {dest_bin}")
+
+    # Reload Hyprland if running
+    if shutil.which("hyprctl"):
+        run_cmd(["hyprctl", "reload"], check=False)
+
 def install_hexacore():
     print("==> Installing HexaCore Workstation...")
     BIN_DEST.mkdir(parents=True, exist_ok=True)
@@ -126,6 +169,7 @@ def install_cli():
 def main():
     install_plugins()
     install_shell_config()
+    install_shortcuts()
     install_hexacore()
     install_cli()
     print("\n✓ All components installed successfully!")

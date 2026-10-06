@@ -1,0 +1,46 @@
+#!/bin/bash
+# Cycle ASUS ROG Flow 13 performance & fan profiles (Quiet, Balanced, Performance)
+# and send an Omarchy notification.
+
+ACTION="${1:-next}"
+
+get_profile() {
+    asusctl profile get 2>/dev/null | grep "Active profile" | cut -d: -f2 | xargs
+}
+
+notify_profile() {
+    local profile="$1"
+    case "$profile" in
+        Quiet)
+            omarchy-notification-send -g 🤫 "Fan Profile: Quiet" "Silent fans and low thermal dissipation."
+            ;;
+        Balanced)
+            omarchy-notification-send -g ⚖️ "Fan Profile: Balanced" "Adaptive cooling and balanced performance."
+            ;;
+        Performance)
+            omarchy-notification-send -g ⚡ "Fan Profile: Performance" "Maximum clocks and active cooling for AI / workloads."
+            ;;
+        *)
+            omarchy-notification-send -g ⚙️ "Fan Profile: $profile" "Active performance profile."
+            ;;
+    esac
+}
+
+case "$ACTION" in
+    next)
+        asusctl profile next >/dev/null 2>&1
+        PROFILE=$(get_profile)
+        notify_profile "$PROFILE"
+        ;;
+    get|status)
+        echo "Active profile: $(get_profile)"
+        ;;
+    Quiet|Balanced|Performance)
+        asusctl profile set "$ACTION" >/dev/null 2>&1
+        notify_profile "$ACTION"
+        ;;
+    *)
+        echo "Usage: $0 [next|status|Quiet|Balanced|Performance]"
+        exit 1
+        ;;
+esac

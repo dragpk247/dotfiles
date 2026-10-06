@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-10-06T04:40:46.765780",
+  "updated_at": "2026-10-06T05:02:34.898576",
   "total_plugins": 15,
   "upstream_count": 8,
   "custom_count": 7,
@@ -183,5 +183,10 @@
     "installed": true,
     "entrypoint": "bin/workflow-hexacore",
     "keybinding": "SUPER ALT, H"
+  },
+  "shortcuts": {
+    "bindings_file": "hypr/bindings.lua",
+    "menu_extensions": "omarchy/extensions/omarchy-menu.jsonc",
+    "scripts_dir": "shortcuts/scripts"
   }
 }

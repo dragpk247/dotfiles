@@ -1,0 +1,41 @@
+#!/bin/bash
+# Fast fuzzy project workspace launcher for Omarchy / Hyprland
+
+if [ "$1" != "--interactive" ]; then
+    setsid kitty --class=popup-projects -T "Project Switcher" "$0" --interactive >/dev/null 2>&1 &
+    exit 0
+fi
+
+# Gather project directories
+PROJECT_DIRS=(
+    "$HOME/Projects"/*
+    "$HOME/.config"
+    "$HOME/.local/bin"
+    "$HOME"
+)
+
+VALID_DIRS=()
+for d in "${PROJECT_DIRS[@]}"; do
+    [ -d "$d" ] && VALID_DIRS+=("$d")
+done
+
+# Run fzf with live preview
+SELECTED=$(printf "%s\n" "${VALID_DIRS[@]}" | fzf \
+    --prompt="🚀 Project ❯ " \
+    --header="[ENTER] Open Terminal  |  [CTRL-E] Open in Editor  |  [ESC] Exit" \
+    --expect=ctrl-e \
+    --border=rounded \
+    --color=border:#7aa2f7,header:#e0af68,prompt:#bb9af7 \
+    --preview='dir={}; echo "=== $dir ==="; if [ -d "$dir/.git" ]; then git -C "$dir" status -s; echo ""; echo "--- Recent Commits ---"; git -C "$dir" log -n 5 --oneline; else ls -la "$dir" | head -n 15; fi' \
+    --preview-window=right:55%:wrap)
+
+KEY=$(echo "$SELECTED" | head -n1)
+DIR=$(echo "$SELECTED" | tail -n +2)
+
+if [ -n "$DIR" ] && [ -d "$DIR" ]; then
+    if [ "$KEY" = "ctrl-e" ]; then
+        setsid kitty --directory "$DIR" omarchy-launch-editor "$DIR" >/dev/null 2>&1 &
+    else
+        setsid kitty --directory "$DIR" >/dev/null 2>&1 &
+    fi
+fi

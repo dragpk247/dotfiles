@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Desktop notification helper
+notify() {
+  local icon="$1"
+  local title="$2"
+  local msg="$3"
+  if command -v omarchy-notification-send >/dev/null 2>&1; then
+    omarchy-notification-send -g "$icon" "$title" "$msg"
+  elif command -v notify-send >/dev/null 2>&1; then
+    notify-send -a "GPU Switcher" -u normal "$title" "$msg"
+  fi
+  echo "[$title] $msg"
+}
+
+current_mode=$(supergfxctl -g 2>/dev/null || echo "Unknown")
+current_power=$(powerprofilesctl get 2>/dev/null || echo "Unknown")
+
+set_mode() {
+  local target_gpu="$1"
+  local target_power="$2"
+  local target_asus_profile="$3"
+  local icon="$4"
+
+  # Switch GPU mode
+  output=$(supergfxctl -m "$target_gpu" 2>&1) || {
+    notify "❌" "GPU Switch Failed" "$output"
+    exit 1
+  }
+
+  # Set power profile
+  powerprofilesctl set "$target_power" 2>/dev/null || true
+
+  # Also sync ASUS fan/thermal profile if available
+  if command -v asusctl >/dev/null 2>&1; then
+    asusctl profile set "$target_asus_profile" >/dev/null 2>&1 || true
+  fi
+
+  # Check if logout or reboot is required
+  if echo "$output" | grep -qi "logout"; then
+    notify "$icon" "GPU Mode: $target_gpu" "Power: $target_power | Fan: $target_asus_profile\n⚠️ Log out and back in to complete graphics switch."
+  elif echo "$output" | grep -qi "reboot"; then
+    notify "$icon" "GPU Mode: $target_gpu" "Power: $target_power | Fan: $target_asus_profile\n⚠️ Reboot required to take effect."
+  else
+    notify "$icon" "GPU Mode: $target_gpu" "Power: $target_power | Fan: $target_asus_profile active."
+  fi
+}
+
+toggle() {
+  if [ "$current_mode" = "Integrated" ]; then
+    set_mode "Hybrid" "performance" "Performance" "⚡"
+  else
+    set_mode "Integrated" "power-saver" "Quiet" "🔋"
+  fi
+}
+
+status() {
+  echo "Current GPU Mode: $current_mode"
+  echo "Supported Modes:  $(supergfxctl -s 2>/dev/null || echo 'Unknown')"
+  echo "Power Profile:    $current_power"
+  if command -v asusctl >/dev/null 2>&1; then
+    echo "ASUS Fan Profile: $(asusctl profile get 2>/dev/null | grep 'Active profile' | cut -d: -f2 | xargs || echo 'Unknown')"
+  fi
+}
+
+action="${1:-status}"
+
+case "$action" in
+  toggle)
+    toggle
+    ;;
+  integrated|igpu|battery)
+    set_mode "Integrated" "power-saver" "Quiet" "🔋"
+    ;;
+  hybrid|dgpu|performance)
+    set_mode "Hybrid" "performance" "Performance" "⚡"
+    ;;
+  balanced)
+    set_mode "Hybrid" "balanced" "Balanced" "⚖️"
+    ;;
+  status)
+    status
+    ;;
+  help|--help|-h)
+    echo "Usage: $(basename "$0") [toggle|integrated|hybrid|balanced|status]"
+    echo ""
+    echo "Commands:"
+    echo "  toggle       - Toggle between Integrated (power-saver / Quiet) and Hybrid (performance / Performance)"
+    echo "  integrated   - Switch to AMD iGPU only, power-saver profile, Quiet fan mode"
+    echo "  hybrid       - Switch to Hybrid dGPU (NVIDIA enabled), performance profile, Performance fan mode"
+    echo "  balanced     - Switch to Hybrid dGPU, balanced power profile, Balanced fan mode"
+    echo "  status       - Show current GPU and power profiles"
+    ;;
+  *)
+    echo "Unknown command: $action"
+    echo "Run '$(basename "$0") help' for usage."
+    exit 1
+    ;;
+esac

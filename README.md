@@ -28,10 +28,27 @@ Automated dotfile management for **[Omarchy](https://omarchy.org/)** shell plugi
    - Bar status layout (left, center, right widgets)
    - Enabled and disabled plugins
    - Idle lock and screensaver thresholds
-3. **HexaCore Workstation Manager (`hexacore/`)**:
+3. **Omarchy Shortcuts & Hyprland Configs (`hypr/`, `omarchy/extensions/`, `shortcuts/`)**:
+   - Hyprland keybindings ([`hypr/bindings.lua`](hypr/bindings.lua)):
+     - Dropdown scratchpad terminal (`SUPER + GRAVE`)
+     - Screen text OCR capture (`SUPER + SHIFT + T`)
+     - Battery limit toggle (`SUPER + ALT + B`)
+     - Keyboard backlight toggle (`SUPER + ALT + K`)
+     - ROG fan & power profile cycle (`SUPER + ALT + R`)
+     - GPU profile switch (`SUPER + ALT + G`)
+     - Fuzzy project workspace switcher (`SUPER + ALT + P`)
+     - Tablet / tent mode toggle (`SUPER + ALT + T`)
+     - Dev Workflows menu (`SUPER + ALT + W`)
+     - HexaCore 6-workspace deployment (`SUPER + ALT + H`)
+     - Screen orientation shortcuts (`SUPER + ALT + Arrows`)
+     - AI Agent focus/launcher (`SUPER + A`, `SUPER + SHIFT + H`)
+   - Hyprland window rules & autostart ([`hypr/hyprland.lua`](hypr/hyprland.lua), [`hypr/autostart.lua`](hypr/autostart.lua))
+   - Omarchy menu extensions & actions ([`omarchy/extensions/omarchy-menu.jsonc`](omarchy/extensions/omarchy-menu.jsonc))
+   - Shortcut helper scripts ([`shortcuts/scripts/`](shortcuts/scripts/)):
+     - `toggle-dropdown-terminal`, `asus-battery-toggle`, `asus-kbd-sync`, `asus-profile-toggle`, `gpu-profile-switch`, `project-switcher`, `asus-tablet-mode`, `omarchy-workflow-menu`, `asus-rotate`, `asus-agent-menu`, `asus-kbd-menu`
+4. **HexaCore Workstation Manager (`hexacore/`)**:
    - `workflow-hexacore` execution binary
    - `hexacore` CLI shortcut
-   - Hyprland keybinding configuration (`SUPER + ALT + H`)
    - Standalone installation script
 
 ---

@@ -52,6 +52,12 @@ for p in d.get('upstream_plugins', []):
 print('\n[Custom Plugins]')
 for p in d.get('custom_plugins', []):
     print(f'  • {p[\"id\"]}')
+sc = d.get('shortcuts', {})
+if sc:
+    print('\n[Tracked Shortcuts & Bindings]')
+    print(f'  • Hyprland Bindings: {sc.get(\"bindings_file\", \"None\")}')
+    print(f'  • Menu Extensions:   {sc.get(\"menu_extensions\", \"None\")}')
+    print(f'  • Helper Scripts:    {sc.get(\"scripts_dir\", \"None\")}')
 "
         fi
         echo -e "\n=== Git Status in $DOTFILES_DIR ==="

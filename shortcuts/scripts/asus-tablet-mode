@@ -1,0 +1,54 @@
+#!/bin/bash
+# Toggle Tablet / Tent Mode for ASUS ROG Flow 13
+# Disables the internal physical keyboard and touchpad to avoid accidental inputs
+# while folded, keeping the touchscreen and stylus fully active.
+
+ACTION="${1:-toggle}"
+STATE_FILE="$HOME/.local/state/omarchy/toggles/tablet-mode"
+mkdir -p "$(dirname "$STATE_FILE")" 2>/dev/null
+
+KBD="asustek-computer-inc.-n-key-device"
+TOUCHPAD="elan1201:00-04f3:3098-touchpad"
+
+enable_tablet_mode() {
+    hyprctl eval "hl.device({ name = \"$KBD\", enabled = false })" >/dev/null 2>&1
+    hyprctl eval "hl.device({ name = \"$TOUCHPAD\", enabled = false })" >/dev/null 2>&1
+    asusctl leds set off >/dev/null 2>&1
+    touch "$STATE_FILE"
+    omarchy-notification-send -g 📱 "Tablet Mode Activated" "Keyboard & touchpad disabled. Touchscreen and stylus active."
+}
+
+disable_tablet_mode() {
+    hyprctl eval "hl.device({ name = \"$KBD\", enabled = true })" >/dev/null 2>&1
+    hyprctl eval "hl.device({ name = \"$TOUCHPAD\", enabled = true })" >/dev/null 2>&1
+    omarchy-brightness-keyboard restore >/dev/null 2>&1
+    rm -f "$STATE_FILE"
+    omarchy-notification-send -g 💻 "Laptop Mode Restored" "Built-in keyboard and touchpad are active."
+}
+
+case "$ACTION" in
+    on|tablet)
+        enable_tablet_mode
+        ;;
+    off|laptop)
+        disable_tablet_mode
+        ;;
+    toggle)
+        if [ -f "$STATE_FILE" ]; then
+            disable_tablet_mode
+        else
+            enable_tablet_mode
+        fi
+        ;;
+    status)
+        if [ -f "$STATE_FILE" ]; then
+            echo "Tablet Mode (Keyboard & Touchpad disabled)"
+        else
+            echo "Laptop Mode (Keyboard & Touchpad active)"
+        fi
+        ;;
+    *)
+        echo "Usage: $0 [toggle|on|off|status]"
+        exit 1
+        ;;
+esac

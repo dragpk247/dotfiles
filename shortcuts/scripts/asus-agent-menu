@@ -1,0 +1,101 @@
+#!/bin/bash
+# asus-agent-menu: Interactive AI Agent manager & launcher for Omarchy / Hyprland
+
+check_process() {
+    local name="$1"
+    if pgrep -x "$name" >/dev/null 2>&1; then
+        echo "ACTIVE"
+    else
+        echo "IDLE"
+    fi
+}
+
+AGY_STATUS=$(check_process agy)
+HERMES_STATUS=$(check_process hermes)
+CLAUDE_STATUS=$(check_process claude)
+CODEX_STATUS=$(check_process codex)
+OLLAMA_STATUS=$(systemctl is-active ollama 2>/dev/null || echo "inactive")
+
+TAB=$'\t'
+
+CHOICE_RAW=$(omarchy-menu-select "AI Agents & Sessions" \
+  "🤖${TAB}Antigravity (agy) [$AGY_STATUS]${TAB}Focus existing session or launch new kitty terminal" \
+  "☤${TAB}Hermes Agent [$HERMES_STATUS]${TAB}Focus existing session or launch Hermes CLI" \
+  "⚡${TAB}Claude Code [$CLAUDE_STATUS]${TAB}Focus existing session or launch claude CLI" \
+  "💻${TAB}Codex CLI [$CODEX_STATUS]${TAB}Focus existing session or launch codex CLI" \
+  "🦙${TAB}Ollama Local AI [$OLLAMA_STATUS]${TAB}Select from local models (llama3, qwen2.5, etc.) and chat" \
+  "📊${TAB}View Agent Token Usage & Limits${TAB}Check today's token burn, prompts, and subscription status" \
+  "🛑${TAB}Kill / Close Active Agent Terminals${TAB}Terminate running background agent processes" \
+  -- --width 540
+)
+
+CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
+
+case "$CHOICE" in
+  *"Antigravity"*)
+    omarchy-launch-or-focus agy "kitty --title agy -e agy"
+    ;;
+  *"Hermes"*)
+    omarchy-launch-or-focus hermes "kitty --title hermes -e hermes"
+    ;;
+  *"Claude Code"*)
+    omarchy-launch-or-focus claude "kitty --title claude -e claude"
+    ;;
+  *"Codex CLI"*)
+    omarchy-launch-or-focus codex "kitty --title codex -e codex"
+    ;;
+  *"Ollama"*)
+    if [ "$OLLAMA_STATUS" != "active" ]; then
+        systemctl start ollama 2>/dev/null
+    fi
+    MODELS=$(ollama list 2>/dev/null | awk 'NR>1 {print $1}')
+    if [ -z "$MODELS" ]; then
+        notify-send -i dialog-information "Ollama" "No local models found. Run 'ollama pull llama3' to download one."
+        exit 0
+    fi
+    MODEL=$(omarchy-menu-select "Select Ollama Model to Run" $MODELS -- --width 450)
+    if [ -n "$MODEL" ]; then
+        setsid kitty --title "Ollama ($MODEL)" -e ollama run "$MODEL" >/dev/null 2>&1 &
+    fi
+    ;;
+  *"View Agent Token Usage"*)
+    omarchy-agent-usage-update >/dev/null 2>&1
+    STATS=""
+    USAGE_DIR="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/agents/usage"
+    for f in "$USAGE_DIR"/*.json; do
+        if [ -f "$f" ]; then
+            agent_name=$(jq -r '.name // .id' "$f" 2>/dev/null)
+            today_tokens=$(jq -r '.todayTotalTokens // 0' "$f" 2>/dev/null)
+            today_prompts=$(jq -r '.todayPrompts // 0' "$f" 2>/dev/null)
+            tier=$(jq -r '.tierLabel // ""' "$f" 2>/dev/null)
+            [ -n "$tier" ] && tier=" ($tier)"
+            STATS="$STATS\n• $agent_name$tier: $today_tokens tokens today ($today_prompts prompts)"
+        fi
+    done
+    if [ -z "$STATS" ]; then
+        STATS="No local usage records found yet."
+    fi
+    notify-send -t 8000 -i dialog-information "AI Agent Usage Stats" "$STATS"
+    ;;
+  *"Kill / Close"*)
+    TARGET=$(omarchy-menu-select "Select Agent to Terminate" "agy" "hermes" "claude" "codex" "All" -- --width 400)
+    case "$TARGET" in
+        agy)
+            pkill -x agy && notify-send -i dialog-warning "AI Agents" "Closed agy sessions"
+            ;;
+        hermes)
+            pkill -x hermes && notify-send -i dialog-warning "AI Agents" "Closed hermes sessions"
+            ;;
+        claude)
+            pkill -x claude && notify-send -i dialog-warning "AI Agents" "Closed claude sessions"
+            ;;
+        codex)
+            pkill -x codex && notify-send -i dialog-warning "AI Agents" "Closed codex sessions"
+            ;;
+        All)
+            pkill -x agy; pkill -x hermes; pkill -x claude; pkill -x codex
+            notify-send -i dialog-warning "AI Agents" "Terminated all active AI agent sessions"
+            ;;
+    esac
+    ;;
+esac

@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """
 Omarchy Dotfiles Synchronization Engine
-Scans current Omarchy shell plugins, shell.json, and HexaCore layout manager,
-syncs them into the dotfiles repository, and updates the plugins manifest.
+Scans current Omarchy shell plugins, shell.json, HexaCore layout manager,
+and Omarchy shortcuts / keybindings / helper scripts, syncs them into the
+dotfiles repository, and updates the manifests.
 """
 
 import os
 import sys
+import re
 import json
 import shutil
 import subprocess
@@ -14,15 +16,25 @@ from datetime import datetime
 from pathlib import Path
 
 DOTFILES_DIR = Path(__file__).resolve().parent.parent
+
+# Sources
 OMARCHY_PLUGINS_SRC = Path.home() / ".config" / "omarchy" / "plugins"
 OMARCHY_SHELL_SRC = Path.home() / ".config" / "omarchy" / "shell.json"
-HEXACORE_SRC_DIR = Path.home() / "Projects" / "omarchy-hexacore"
-HEXACORE_BIN_SRC = Path.home() / ".local" / "bin" / "workflow-hexacore"
+OMARCHY_MENU_SRC = Path.home() / ".config" / "omarchy" / "extensions" / "omarchy-menu.jsonc"
 
+HYPR_DIR_SRC = Path.home() / ".config" / "hypr"
+LOCAL_BIN_SRC = Path.home() / ".local" / "bin"
+HEXACORE_SRC_DIR = Path.home() / "Projects" / "omarchy-hexacore"
+HEXACORE_BIN_SRC = LOCAL_BIN_SRC / "workflow-hexacore"
+
+# Destinations
 DEST_OMARCHY = DOTFILES_DIR / "omarchy"
 DEST_PLUGINS = DEST_OMARCHY / "plugins"
 DEST_CUSTOM_PLUGINS = DEST_PLUGINS / "custom"
+DEST_EXTENSIONS = DEST_OMARCHY / "extensions"
 DEST_HEXACORE = DOTFILES_DIR / "hexacore"
+DEST_HYPR = DOTFILES_DIR / "hypr"
+DEST_SHORTCUT_SCRIPTS = DOTFILES_DIR / "shortcuts" / "scripts"
 
 def run_cmd(cmd, cwd=None, check=True):
     res = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True)
@@ -49,7 +61,6 @@ def sync_hexacore():
     dest_hypr.mkdir(parents=True, exist_ok=True)
 
     if HEXACORE_SRC_DIR.exists():
-        # Sync from Projects/omarchy-hexacore
         for file_name in ["install.sh", "README.md", "LICENSE"]:
             src = HEXACORE_SRC_DIR / file_name
             if src.exists():
@@ -71,6 +82,63 @@ def sync_hexacore():
     else:
         print("    Warning: HexaCore source not found.")
 
+def sync_shortcuts():
+    print("==> Syncing Omarchy Shortcuts & Hyprland bindings...")
+    DEST_HYPR.mkdir(parents=True, exist_ok=True)
+    DEST_SHORTCUT_SCRIPTS.mkdir(parents=True, exist_ok=True)
+    DEST_EXTENSIONS.mkdir(parents=True, exist_ok=True)
+
+    # 1. Sync Hyprland shortcut files
+    tracked_hypr_files = ["bindings.lua", "hyprland.lua", "autostart.lua"]
+    for fname in tracked_hypr_files:
+        src = HYPR_DIR_SRC / fname
+        if src.exists():
+            dest = DEST_HYPR / fname
+            shutil.copy2(src, dest)
+            print(f"    Synced Hyprland config: {fname}")
+
+    # 2. Sync Omarchy Menu extensions
+    if OMARCHY_MENU_SRC.exists():
+        dest_menu = DEST_EXTENSIONS / "omarchy-menu.jsonc"
+        shutil.copy2(OMARCHY_MENU_SRC, dest_menu)
+        print("    Synced Omarchy menu shortcuts: omarchy-menu.jsonc")
+
+    # 3. Detect and copy custom scripts referenced by shortcuts
+    scripts_to_check = set()
+
+    # Parse bindings.lua
+    bindings_file = HYPR_DIR_SRC / "bindings.lua"
+    if bindings_file.exists():
+        text = bindings_file.read_text()
+        # Find command strings in o.bind(...)
+        matches = re.findall(r'o\.bind\([^,]+,[^,]+,\s*["\']([^"\']+)["\']', text)
+        for cmd in matches:
+            first_word = cmd.strip().split()[0]
+            bin_name = Path(first_word).name
+            scripts_to_check.add(bin_name)
+
+    # Parse omarchy-menu.jsonc
+    if OMARCHY_MENU_SRC.exists():
+        text = OMARCHY_MENU_SRC.read_text()
+        action_matches = re.findall(r'"action":\s*"([^"]+)"', text)
+        for act in action_matches:
+            first_word = act.strip().split()[0]
+            bin_name = Path(first_word).name
+            scripts_to_check.add(bin_name)
+
+    copied_scripts = []
+    for sname in sorted(scripts_to_check):
+        src_script = LOCAL_BIN_SRC / sname
+        # Only copy user scripts in ~/.local/bin (skip system binaries like omarchy, kitty, etc.)
+        if src_script.exists() and not src_script.is_dir():
+            dest_script = DEST_SHORTCUT_SCRIPTS / sname
+            shutil.copy2(src_script, dest_script)
+            dest_script.chmod(0o755)
+            copied_scripts.append(sname)
+            print(f"    [Shortcut Script] {sname} -> shortcuts/scripts/{sname}")
+
+    print(f"    Synced {len(copied_scripts)} shortcut helper scripts.")
+
 def sync_plugins():
     print("==> Syncing Omarchy plugins...")
     DEST_CUSTOM_PLUGINS.mkdir(parents=True, exist_ok=True)
@@ -82,13 +150,11 @@ def sync_plugins():
         print(f"    Warning: Plugins directory {OMARCHY_PLUGINS_SRC} does not exist.")
         return
 
-    # List plugin directories
     entries = sorted(OMARCHY_PLUGINS_SRC.iterdir())
     for entry in entries:
         if not entry.is_dir():
             continue
         name = entry.name
-        # Skip backup and hidden directories
         if name.startswith(".") or ".bak" in name:
             continue
 
@@ -102,7 +168,6 @@ def sync_plugins():
 
         git_dir = entry / ".git"
         if git_dir.exists() and git_dir.is_dir():
-            # Upstream git repo
             git_url_proc = run_cmd(["git", "-C", str(entry), "config", "--get", "remote.origin.url"], check=False)
             git_url = git_url_proc.stdout.strip()
             if git_url:
@@ -125,12 +190,10 @@ def sync_plugins():
                 print(f"    [Upstream] {name} ({git_url})")
                 continue
 
-        # Custom / local plugin
         dest_plugin_dir = DEST_CUSTOM_PLUGINS / name
         if dest_plugin_dir.exists():
             shutil.rmtree(dest_plugin_dir)
         
-        # Copy plugin files, excluding any stray .git
         shutil.copytree(
             entry, 
             dest_plugin_dir, 
@@ -148,7 +211,6 @@ def sync_plugins():
         custom_plugins.append(plugin_info)
         print(f"    [Custom]   {name} -> {dest_plugin_dir}")
 
-    # Remove deleted custom plugins from dotfiles that are no longer in ~/.config/omarchy/plugins
     active_custom_ids = {p["id"] for p in custom_plugins}
     for existing in DEST_CUSTOM_PLUGINS.iterdir():
         if existing.is_dir() and existing.name not in active_custom_ids:
@@ -167,13 +229,18 @@ def sync_plugins():
             "installed": True,
             "entrypoint": "bin/workflow-hexacore",
             "keybinding": "SUPER ALT, H"
+        },
+        "shortcuts": {
+            "bindings_file": "hypr/bindings.lua",
+            "menu_extensions": "omarchy/extensions/omarchy-menu.jsonc",
+            "scripts_dir": "shortcuts/scripts"
         }
     }
 
     manifest_dest = DEST_PLUGINS / "plugins.json"
     with open(manifest_dest, "w") as f:
         json.dump(manifest_output, f, indent=2)
-    print(f"    Saved plugin registry to {manifest_dest}")
+    print(f"    Saved registry to {manifest_dest}")
 
 def git_commit(custom_message=None):
     print("==> Checking git status in dotfiles repository...")
@@ -185,7 +252,7 @@ def git_commit(custom_message=None):
     print("    Staging changes...")
     run_cmd(["git", "add", "."], cwd=DOTFILES_DIR)
 
-    msg = custom_message or f"chore(dotfiles): sync omarchy plugins, shell.json, and hexacore [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]"
+    msg = custom_message or f"chore(dotfiles): sync plugins, shortcuts, shell.json, and hexacore [{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}]"
     print(f"    Committing: '{msg}'...")
     run_cmd(["git", "commit", "-m", msg], cwd=DOTFILES_DIR)
     print("    Commit successful!")
@@ -193,13 +260,14 @@ def git_commit(custom_message=None):
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Sync Omarchy plugins and HexaCore to dotfiles.")
+    parser = argparse.ArgumentParser(description="Sync Omarchy plugins, shortcuts, and HexaCore to dotfiles.")
     parser.add_argument("-m", "--message", help="Custom commit message")
     parser.add_argument("--no-commit", action="store_true", help="Do not commit changes to git")
     parser.add_argument("--push", action="store_true", help="Push to git remote after committing")
     args = parser.parse_args()
 
     sync_omarchy_shell()
+    sync_shortcuts()
     sync_hexacore()
     sync_plugins()
 
