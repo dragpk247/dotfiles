@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.process-cleaner",
+  "name": "Process Cleaner",
+  "version": "1.0.0",
+  "author": "jpi",
+  "description": "Clean up background processes and monitor system resources",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Process Cleaner",
+    "description": "Interactive process manager and memory cleaner",
+    "category": "System",
+    "allowMultiple": false
+  }
+}

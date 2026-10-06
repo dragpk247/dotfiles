@@ -1,0 +1,107 @@
+{
+  "bar": {
+    "centerAnchor": "omarchy.clock",
+    "layout": {
+      "center": [
+        {
+          "id": "omarchy.keyboard-layout"
+        },
+        {
+          "id": "omarchy.indicators"
+        },
+        {
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "id": "omarchy.clock",
+          "verticalFormat": "HH\n—\nmm"
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.system-update"
+        }
+      ],
+      "left": [
+        {
+          "id": "jpi.menu"
+        },
+        {
+          "id": "omarchy.workspaces"
+        }
+      ],
+      "right": [
+        {
+          "id": "omarchy.tray"
+        },
+        {
+          "id": "io.github.x3me.nexthop"
+        },
+        {
+          "id": "ucmz851.omasecurity"
+        },
+        {
+          "id": "robzolkos.github"
+        },
+        {
+          "id": "dizziee.system-updates"
+        },
+        {
+          "id": "dizziee.auto-wallpaper"
+        },
+        {
+          "id": "io.github.diegopluna.argus"
+        },
+        {
+          "id": "user.apps-menu"
+        },
+        {
+          "id": "user.dev-workflows"
+        },
+        {
+          "id": "user.agents-control"
+        },
+        {
+          "id": "user.process-cleaner"
+        },
+        {
+          "id": "user.kbd-backlight"
+        },
+        {
+          "id": "omarchy.bluetooth"
+        },
+        {
+          "id": "omarchy.network"
+        },
+        {
+          "id": "omarchy.audio"
+        },
+        {
+          "id": "jpi.monitor"
+        },
+        {
+          "id": "omarchy.power",
+          "showPercentage": true
+        }
+      ]
+    },
+    "position": "top",
+    "transparent": false
+  },
+  "cloneSourceRestores": [
+    "jpi.menu"
+  ],
+  "disabledPlugins": [
+    "omarchy.menu"
+  ],
+  "idle": {
+    "lock": 180,
+    "screensaver": 90
+  },
+  "plugins": [
+    {
+      "id": "io.github.deunnis.lacquer"
+    }
+  ],
+  "version": 1
+}

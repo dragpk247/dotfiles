@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.apps-menu",
+  "name": "Apps Menu",
+  "version": "1.0.0",
+  "author": "jpi",
+  "description": "Open installed applications menu",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Apps",
+    "description": "Open menu for all installed apps",
+    "category": "Launcher",
+    "allowMultiple": false
+  }
+}

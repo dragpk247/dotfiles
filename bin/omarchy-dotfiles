@@ -1,0 +1,71 @@
+#!/usr/bin/env bash
+# omarchy-dotfiles CLI helper
+set -euo pipefail
+
+DOTFILES_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+usage() {
+    cat << EOF
+Usage: omarchy-dotfiles <command> [options]
+
+Commands:
+  sync              Update dotfiles with current Omarchy plugins, shell.json, and HexaCore
+  install           Restore / install plugins, shell config, and HexaCore from dotfiles
+  status            Show dotfiles git status and tracked plugins summary
+  push              Push dotfiles changes to remote Git repository
+
+Options for sync:
+  -m, --message     Custom git commit message
+  --no-commit       Sync files without making a git commit
+  --push            Push to remote after committing
+
+Examples:
+  omarchy-dotfiles sync
+  omarchy-dotfiles sync -m "Added my new custom plugin"
+  omarchy-dotfiles status
+  omarchy-dotfiles install
+EOF
+}
+
+case "${1:-}" in
+    sync)
+        shift
+        python3 "$DOTFILES_DIR/scripts/sync.py" "$@"
+        ;;
+    install)
+        shift
+        python3 "$DOTFILES_DIR/scripts/install.py" "$@"
+        ;;
+    status)
+        echo "=== Omarchy Dotfiles Status ==="
+        if [ -f "$DOTFILES_DIR/omarchy/plugins/plugins.json" ]; then
+            python3 -c "
+import json
+with open('$DOTFILES_DIR/omarchy/plugins/plugins.json') as f:
+    d = json.load(f)
+print(f'Last Synced:    {d.get(\"updated_at\", \"unknown\")}')
+print(f'Total Plugins:  {d.get(\"total_plugins\", 0)} ({d.get(\"upstream_count\", 0)} upstream, {d.get(\"custom_count\", 0)} custom)')
+print('\n[Upstream Plugins]')
+for p in d.get('upstream_plugins', []):
+    print(f'  • {p[\"id\"]} -> {p[\"repo_url\"]}')
+print('\n[Custom Plugins]')
+for p in d.get('custom_plugins', []):
+    print(f'  • {p[\"id\"]}')
+"
+        fi
+        echo -e "\n=== Git Status in $DOTFILES_DIR ==="
+        git -C "$DOTFILES_DIR" status -s
+        ;;
+    push)
+        echo "==> Pushing dotfiles to remote..."
+        git -C "$DOTFILES_DIR" push
+        ;;
+    -h|--help|help|"")
+        usage
+        ;;
+    *)
+        echo "Error: Unknown command '$1'"
+        usage
+        exit 1
+        ;;
+esac

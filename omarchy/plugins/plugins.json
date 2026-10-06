@@ -1,0 +1,187 @@
+{
+  "version": 1,
+  "updated_at": "2026-10-06T04:40:12.033665",
+  "total_plugins": 15,
+  "upstream_count": 8,
+  "custom_count": 7,
+  "upstream_plugins": [
+    {
+      "id": "dizziee.auto-wallpaper",
+      "name": "Auto Wallpaper",
+      "description": "Preview the active theme's wallpapers and automatically cycle or shuffle them on a schedule.",
+      "version": "1.1.0",
+      "repo_url": "https://github.com/JJDizz1L/dizziee.auto-wallpaper.git",
+      "commit": "2bb66623c5404be417ba92a2bba872ba0b2aec61",
+      "branch": "main",
+      "kinds": [
+        "service",
+        "bar-widget",
+        "overlay"
+      ]
+    },
+    {
+      "id": "dizziee.cline-model-usage",
+      "name": "Cline Usage",
+      "description": "Cline usage stats in the Omarchy bar.",
+      "version": "1.1.0",
+      "repo_url": "https://github.com/JJDizz1L/dizziee.cline-model-usage.git",
+      "commit": "608f0f62dcb64b60a3d0b9d2037ba42cc5dd40ed",
+      "branch": "master",
+      "kinds": [
+        "bar-widget"
+      ]
+    },
+    {
+      "id": "dizziee.system-updates",
+      "name": "System Updates",
+      "description": "Arch, AUR, Flatpak, Omarchy, plugins, and mise update indicator with per-repo update buttons.",
+      "version": "1.5.0",
+      "repo_url": "https://github.com/JJDizz1L/dizziee.system-updates.git",
+      "commit": "74e094a790ce45c0b2d6a5afcaa0d80315c46288",
+      "branch": "master",
+      "kinds": [
+        "bar-widget"
+      ]
+    },
+    {
+      "id": "io.github.deunnis.lacquer",
+      "name": "Omarchy Lacquer",
+      "description": "One app for how your Omarchy desktop looks. Themes, wallpapers, shuffle and theme generation with a readability check; saved looks you can carry to another machine; fonts, text rendering, icons and the mouse pointer; window shape, borders built from your theme, glass, shadow and the colour behind your windows; one motion feel or every animation on its own; screens, night light, lock and boot; bar and menu style; per-app rules; terminals, btop and every plugin. 370 settings in plain words, live.",
+      "version": "1.0.1",
+      "repo_url": "https://github.com/Deunnis/omarchy-lacquer.git",
+      "commit": "177acbd52eede955b3ec8eb422cc0c36158dd7a5",
+      "branch": "main",
+      "kinds": [
+        "panel",
+        "service"
+      ]
+    },
+    {
+      "id": "io.github.diegopluna.argus",
+      "name": "Argus",
+      "description": "CPU, RAM, GPU, disk, network, battery, power, and temperature stats in the bar, with a full system panel: 2m/1h/24h history that survives restarts (the flight recorder), per-metric opt-in alerts with context snapshots, a filterable sortable process table, per-process GPU usage, drive SMART health, an alert hook for automation, and a GAME tab that configures your MangoHud in-game overlay live.",
+      "version": "1.2.3",
+      "repo_url": "https://github.com/diegopluna/omarchy-argus.git",
+      "commit": "b830cf5688c43d55cd7b4dcf62fe073b4f54bb2d",
+      "branch": "main",
+      "kinds": [
+        "bar-widget"
+      ]
+    },
+    {
+      "id": "io.github.x3me.nexthop",
+      "name": "Nexthop",
+      "description": "Splits your Wi-Fi from your ISP, hop by hop. Continuous latency, jitter and loss on both legs of your connection, with history, outage detection and speed tests.",
+      "version": "0.2.71",
+      "repo_url": "https://github.com/x3me/omarchy-nexthop.git",
+      "commit": "132dba95bd9ef62d3205ff944ab6855a927318f6",
+      "branch": "main",
+      "kinds": [
+        "bar-widget",
+        "service"
+      ]
+    },
+    {
+      "id": "robzolkos.github",
+      "name": "GitHub",
+      "description": "A keyboard-friendly GitHub inbox for notifications, reviews, your own pull requests, assigned issues, Actions, and repositories.",
+      "version": "0.3.0",
+      "repo_url": "https://github.com/robzolkos/omarchy-github.git",
+      "commit": "6f361a45ee928119fbb73d26ca2173b9266a9e73",
+      "branch": "main",
+      "kinds": [
+        "bar-widget"
+      ]
+    },
+    {
+      "id": "ucmz851.omasecurity",
+      "name": "OmaSecurity",
+      "description": "Security posture auditor, shell plugin code health scanner, and hardening advisor for Omarchy Quattro.",
+      "version": "1.0.1",
+      "repo_url": "https://github.com/ucmz851/omasecurity.git",
+      "commit": "45077204d0f807c35a4e7a435a664d0b9c697a1e",
+      "branch": "main",
+      "kinds": [
+        "bar-widget"
+      ]
+    }
+  ],
+  "custom_plugins": [
+    {
+      "id": "jpi.menu",
+      "name": "My Omarchy menu",
+      "description": "Quickshell-powered Omarchy command menu",
+      "version": "1.0.0",
+      "kinds": [
+        "menu",
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/jpi.menu"
+    },
+    {
+      "id": "jpi.monitor",
+      "name": "My Display",
+      "description": "Brightness slider and laptop display controls",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/jpi.monitor"
+    },
+    {
+      "id": "user.agents-control",
+      "name": "AI Agents",
+      "description": "AI Agent launcher, session manager, and usage tracker",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.agents-control"
+    },
+    {
+      "id": "user.apps-menu",
+      "name": "Apps Menu",
+      "description": "Open installed applications menu",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.apps-menu"
+    },
+    {
+      "id": "user.dev-workflows",
+      "name": "Dev Workflows",
+      "description": "Switch development workflows and launch tailored tools directly from the bar",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.dev-workflows"
+    },
+    {
+      "id": "user.kbd-backlight",
+      "name": "Keyboard Backlight",
+      "description": "Toggle ASUS keyboard backlight",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.kbd-backlight"
+    },
+    {
+      "id": "user.process-cleaner",
+      "name": "Process Cleaner",
+      "description": "Clean up background processes and monitor system resources",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.process-cleaner"
+    }
+  ],
+  "hexacore": {
+    "installed": true,
+    "entrypoint": "bin/workflow-hexacore",
+    "keybinding": "SUPER ALT, H"
+  }
+}

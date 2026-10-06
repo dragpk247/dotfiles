@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.agents-control",
+  "name": "AI Agents",
+  "version": "1.0.0",
+  "author": "jpi",
+  "description": "AI Agent launcher, session manager, and usage tracker",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "AI Agents",
+    "description": "AI Agent launcher and session manager",
+    "category": "Tools",
+    "allowMultiple": false
+  }
+}

@@ -1,0 +1,69 @@
+#!/usr/bin/env bash
+# workflow-hexacore: Launches the HexaCore Workstation Layout across Workspaces 1-6
+# Workspace 1: Antigravity CLI (agy)
+# Workspace 2: Firefox (last tabs restored)
+# Workspace 3: Spotify
+# Workspace 4: btop (CPU & Memory hardware monitor)
+# Workspace 5: nvtop (GPU, Power & Thermals monitor)
+# Workspace 6: Mission Center (System Performance GUI)
+
+set -euo pipefail
+
+switch_ws() {
+    hyprctl dispatch "hl.dsp.focus({ workspace = \"$1\" })" >/dev/null 2>&1 || true
+}
+
+launch_ws_app() {
+    local ws="$1"
+    local check_pattern="$2"
+    local max_wait_sec="$3"
+    shift 3
+    local cmd=("$@")
+
+    switch_ws "$ws"
+
+    if ! hyprctl clients | grep -qi "$check_pattern"; then
+        setsid "${cmd[@]}" >/dev/null 2>&1 &
+
+        # Dynamically wait on this workspace until the window is created in Hyprland
+        # This guarantees the app window is docked to this workspace even on cold reboot
+        local loops=$(( max_wait_sec * 10 ))
+        for ((i=0; i<loops; i++)); do
+            if hyprctl clients | grep -qi "$check_pattern"; then
+                break
+            fi
+            sleep 0.1
+        done
+        sleep 0.15
+    fi
+}
+
+notify-send -i preferences-desktop-display "HexaCore Workflow" "Deploying 6-workspace environment..."
+
+# 1. Workspace 1: Antigravity CLI (agy)
+launch_ws_app 1 "initialClass: agy" 2 kitty --class agy --title agy -e agy
+
+# 2. Workspace 2: Firefox (restores session tabs)
+launch_ws_app 2 "class: firefox" 5 firefox
+
+# 3. Workspace 3: Spotify
+launch_ws_app 3 "class: spotify" 5 spotify
+
+# 4. Workspace 4: btop
+launch_ws_app 4 "title: btop" 2 kitty --class btop --title btop -e btop
+
+# 5. Workspace 5: nvtop
+launch_ws_app 5 "title: nvtop" 2 kitty --class nvtop --title nvtop -e nvtop
+
+# 6. Workspace 6: Mission Center
+if command -v missioncenter >/dev/null 2>&1; then
+    launch_ws_app 6 "MissionCenter" 4 missioncenter
+elif command -v mission-center >/dev/null 2>&1; then
+    launch_ws_app 6 "MissionCenter" 4 mission-center
+fi
+
+# Bring user focus back to Workspace 1 (Antigravity)
+sleep 0.25
+switch_ws 1
+
+notify-send -i preferences-desktop-display "HexaCore Workflow" "All 6 workspaces ready! Focus on Workspace 1."
