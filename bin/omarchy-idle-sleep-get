@@ -1,0 +1,13 @@
+#!/bin/bash
+CONF="/etc/systemd/logind.conf.d/30-idle-action.conf"
+if [ -f "$CONF" ]; then
+  action=$(grep -E "^IdleAction=" "$CONF" | cut -d= -f2 | tr -d ' ')
+  sec=$(grep -E "^IdleActionSec=" "$CONF" | cut -d= -f2 | tr -d ' ')
+  if [ "$action" = "ignore" ] || [ "$sec" = "0" ]; then
+    echo "Never"
+  else
+    echo "${sec:-4h}"
+  fi
+else
+  echo "4h"
+fi

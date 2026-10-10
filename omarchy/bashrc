@@ -1,0 +1,34 @@
+export PATH="/home/jpi/.local/share/mise/installs/node/26.7.0/bin:$PATH"
+# Omarchy environment (OMARCHY_PATH + PATH), needed even for non-interactive shells
+[[ -r /usr/share/omarchy/default/bash/env-bootstrap ]] && source /usr/share/omarchy/default/bash/env-bootstrap
+
+# If not running interactively, don't do anything else (leave this above the rc source)
+[[ $- != *i* ]] && return
+
+# All the default Omarchy aliases and functions
+# (don't mess with these directly, just overwrite them here!)
+source "$OMARCHY_PATH/default/bash/rc"
+
+# Add your own exports, aliases, and functions here.
+#
+# Make an alias for invoking commands you use constantly
+# alias p='python'
+
+
+# Added by Antigravity CLI installer
+export PATH="/home/jpi/.local/bin:$PATH"
+export OPENROUTER_API_KEY="YOUR_API_KEY_HERE"
+[ -f ~/.bash_ai_helpers ] && source ~/.bash_ai_helpers
+
+# TypeSafe AI Jev API Key
+export JEV_API_KEY="YOUR_API_KEY_HERE"
+
+# Inhibit system sleep/idle while connected via SSH (with 45m idle auto-logout)
+if [ -n "$SSH_CONNECTION" ]; then
+    export TMOUT=2700  # Automatically close shell after 45 minutes of inactivity
+    if [ -z "$INHIBITED_SSH" ]; then
+        export INHIBITED_SSH=1
+        exec systemd-inhibit --what=idle:sleep:shutdown --who="SSH Session" --why="Active remote session" "$SHELL"
+    fi
+fi
+

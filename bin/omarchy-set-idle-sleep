@@ -1,0 +1,27 @@
+#!/bin/bash
+# Toggle or set idle sleep
+CHOICE="${1:-4h}"
+STATE_DIR="$HOME/.local/state/omarchy/idle-timeout"
+mkdir -p "$STATE_DIR"
+
+echo "$CHOICE" > "$STATE_DIR/current"
+
+# If pkexec / sudo rule is available, update systemd logind config
+# Alternatively launch a pkexec graphical prompt to update the logind config
+if [ "$CHOICE" = "Never" ] || [ "$CHOICE" = "off" ]; then
+  ACTION="ignore"
+  SEC="0"
+else
+  ACTION="suspend"
+  SEC="$CHOICE"
+fi
+
+pkexec sh -c "cat << CONF > /etc/systemd/logind.conf.d/30-idle-action.conf
+[Login]
+IdleAction=$ACTION
+IdleActionSec=$SEC
+CONF
+systemctl reload systemd-logind 2>/dev/null || systemctl restart systemd-logind 2>/dev/null || true
+" >/dev/null 2>&1 &
+
+echo "$CHOICE"

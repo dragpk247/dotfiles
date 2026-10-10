@@ -1,0 +1,51 @@
+#!/bin/bash
+
+# omarchy-hyprland-refresh-rate
+# Get or set the refresh rate of the focused Hyprland monitor.
+
+if [[ -z "$1" ]]; then
+  # Get current refresh rate
+  rate=$(hyprctl monitors -j | jq -r '[.[] | select(.focused == true)][0].refreshRate // empty')
+  if [[ -n "$rate" && "$rate" != "null" ]]; then
+    awk -v r="$rate" 'BEGIN { printf "%d\n", int(r + 0.5) }'
+  else
+    echo "60"
+  fi
+  exit 0
+fi
+
+target_rate="$1"
+
+# Validate numeric input
+if [[ ! "$target_rate" =~ ^[0-9]+$ ]]; then
+  echo "Invalid refresh rate: $target_rate" >&2
+  exit 1
+fi
+
+monitor_info="$(hyprctl monitors -j | jq -e -c '[.[] | select(.focused == true)][0] // empty')"
+if [[ -z "$monitor_info" || "$monitor_info" == "null" ]]; then
+  echo "No focused monitor found" >&2
+  exit 1
+fi
+
+active_monitor="$(echo "$monitor_info" | jq -r '.name')"
+width="$(echo "$monitor_info" | jq -r '.width')"
+height="$(echo "$monitor_info" | jq -r '.height')"
+scale="$(echo "$monitor_info" | jq -r '.scale')"
+
+# Find best matching mode for target_rate if available
+# e.g., 240.02Hz for 240, 119.88 or 120.00 for 120, 59.997 or 60.00 for 60
+mode_rate="$target_rate"
+matched_mode=$(echo "$monitor_info" | jq -r --argjson w "$width" --argjson h "$height" --arg t "$target_rate" '
+  .availableModes[]?
+  | capture("^(?<res>[0-9]+x[0-9]+)@(?<hz>[0-9.]+)Hz$")
+  | select(.res == "\($w)x\($h)")
+  | select((.hz | tonumber | round) == ($t | tonumber))
+  | .hz
+' | head -n 1)
+
+if [[ -n "$matched_mode" ]]; then
+  mode_rate="$matched_mode"
+fi
+
+hyprctl eval "hl.monitor({ output = \"$active_monitor\", mode = \"${width}x${height}@${mode_rate}\", position = \"auto\", scale = $scale })" >/dev/null

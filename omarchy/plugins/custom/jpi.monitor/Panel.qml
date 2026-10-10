@@ -51,7 +51,9 @@ Panel {
     return scalePresets
   }
   property int currentRefreshRate: 60
-  readonly property var refreshRatePresets: [60, 120]
+  readonly property var refreshRatePresets: [60, 120, 240]
+  property string currentIdleSleep: "4h"
+  readonly property var idleSleepPresets: ["1h", "2h", "4h", "Never"]
   property string focusSection: "scale"
   property int selectedIndex: 0
   property bool cursorActive: false
@@ -80,6 +82,7 @@ Panel {
     list.push("textsize")
     list.push("scale")
     list.push("refreshrate")
+    list.push("idlesleep")
     if (displays.length > 1) list.push("monitors")
     return list
   }
@@ -89,13 +92,14 @@ Panel {
     if (section === "textsize") return 0    // slider sentinel at -1, like brightness
     if (section === "scale") return scaleValues.length
     if (section === "refreshrate") return refreshRatePresets.length
+    if (section === "idlesleep") return idleSleepPresets.length
     if (section === "monitors") return displays.length
     return 0
   }
 
   function sectionIsSingleRow(section) {
-    // brightness and text size are lone sliders; scale and refresh rate presets sit horizontally.
-    return section === "brightness" || section === "textsize" || section === "scale" || section === "refreshrate"
+    // brightness and text size are lone sliders; scale, refresh rate, and idle sleep presets sit horizontally.
+    return section === "brightness" || section === "textsize" || section === "scale" || section === "refreshrate" || section === "idlesleep"
   }
 
   function sectionFirstIndex(section) {
@@ -163,6 +167,10 @@ Panel {
     }
     if (focusSection === "refreshrate" && selectedIndex >= 0 && selectedIndex < refreshRatePresets.length) {
       setRefreshRate(refreshRatePresets[selectedIndex])
+      return
+    }
+    if (focusSection === "idlesleep" && selectedIndex >= 0 && selectedIndex < idleSleepPresets.length) {
+      setIdleSleep(idleSleepPresets[selectedIndex])
       return
     }
     if (focusSection === "monitors" && selectedIndex >= 0 && selectedIndex < displays.length) {
@@ -421,6 +429,35 @@ Panel {
         root.monitorScale = root.normalizeScale(String(lines[6] || "").trim())
         root.updateDisplays(String(lines[7] || "[]").trim())
         if (!getRateProc.running) getRateProc.running = true
+        if (!getIdleSleepProc.running) getIdleSleepProc.running = true
+      }
+    }
+  }
+
+  function setIdleSleep(val) {
+    root.currentIdleSleep = val
+    setIdleSleepProc.command = ["/home/jpi/.local/bin/omarchy-set-idle-sleep", String(val)]
+    if (!setIdleSleepProc.running) setIdleSleepProc.running = true
+  }
+
+  Process {
+    id: getIdleSleepProc
+    command: ["/home/jpi/.local/bin/omarchy-idle-sleep-get"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var val = String(text || "4h").trim()
+        if (val !== "") root.currentIdleSleep = val
+      }
+    }
+  }
+
+  Process {
+    id: setIdleSleepProc
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        if (!getIdleSleepProc.running) getIdleSleepProc.running = true
       }
     }
   }
@@ -890,6 +927,67 @@ Panel {
             }
           }
 
+          // ---------- Idle Sleep ----------
+          PanelSeparator {
+            foreground: root.bar.foreground
+          }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(10)
+
+            Item {
+              width: parent.width
+              implicitHeight: Math.max(idleSleepHeader.implicitHeight, idleSleepCurrent.implicitHeight)
+
+              PanelSectionHeader {
+                id: idleSleepHeader
+                text: "SLEEP IDLE"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              Text {
+                id: idleSleepCurrent
+                textFormat: Text.PlainText
+                text: root.currentIdleSleep
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                font.bold: true
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(6)
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+
+            Grid {
+              id: idleSleepRow
+              width: parent.width
+              columns: root.idleSleepPresets.length
+              spacing: Style.spacing.xs
+
+              readonly property real cellWidth: root.idleSleepPresets.length > 0
+                ? (width - spacing * (columns - 1)) / columns
+                : 0
+
+              Repeater {
+                model: root.idleSleepPresets
+
+                IdleSleepPill {
+                  required property string modelData
+                  required property int index
+
+                  sleepValue: modelData
+                  sleepIndex: index
+                  width: idleSleepRow.cellWidth
+                }
+              }
+            }
+          }
+
           // ---------- Monitors ----------
           PanelSeparator {
             visible: root.displays.length > 1
@@ -977,6 +1075,31 @@ Panel {
       root.cursorActive = true
       root.focusSection = "refreshrate"
       root.selectedIndex = ratePill.rateIndex
+    }
+  }
+
+  component IdleSleepPill: Button {
+    id: sleepPill
+    required property string sleepValue
+    required property int sleepIndex
+
+    text: sleepValue
+    fontSize: Style.font.caption
+    foreground: root.bar.foreground
+    fontFamily: root.bar.fontFamily
+    horizontalPadding: Style.spacing.sm
+    verticalPadding: Style.spacing.controlPaddingY
+    bordered: true
+
+    active: root.currentIdleSleep === sleepValue
+    hasCursor: root.cursorActive && root.focusSection === "idlesleep" && root.selectedIndex === sleepIndex
+
+    onClicked: root.setIdleSleep(sleepValue)
+    onHovered: function(isHovered) {
+      if (!isHovered || root.reflowingText) return
+      root.cursorActive = true
+      root.focusSection = "idlesleep"
+      root.selectedIndex = sleepPill.sleepIndex
     }
   }
 
