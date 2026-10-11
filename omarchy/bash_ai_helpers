@@ -1,0 +1,27 @@
+# ==============================================================
+# Terminal AI Single-Word Automation & Hybrid Cost-Optimization
+# ==============================================================
+
+# --- 1. Jev Gateway (Smart Cost-Optimized Routing + Distillation) ---
+# Routes: Cache ($0.00) -> Local GPU ($0.00) -> OpenRouter DeepSeek/Claude
+ask()   { jev --exec "$*"; }
+
+# --- 2. Direct Compute Tiers (Explicit Overrides) ---
+# Tier 1: 100% Free Local RTX 5070 Ti (16GB VRAM)
+gpu()   { llm -m local "$*"; }
+
+# Tier 2: Ultra-Low-Cost Workhorse (~$0.14/M tokens on OpenRouter)
+cheap() { llm -m openrouter/deepseek/deepseek-chat "$*"; }
+fast()  { llm -m openrouter/google/gemini-2.5-flash-lite "$*"; }
+
+# Tier 3: Frontier Reasoning & Architecture (DeepSeek-R1 / Claude)
+# Every query here gets captured into the local distillation dataset!
+think() { llm -m openrouter/deepseek/deepseek-r1 "$*"; }
+smart() { llm -m openrouter/anthropic/claude-sonnet-4.5 "$*"; }
+haiku() { llm -m openrouter/anthropic/claude-haiku-4.5 "$*"; }
+
+# --- 3. Interactive Coding Pair-Programmer (Aider) ---
+aider-local() { aider --model ollama/qwen2.5-coder:14b "$@"; }
+aider-cheap() { aider --model openrouter/deepseek/deepseek-chat "$@"; }
+aider-smart() { aider --model openrouter/anthropic/claude-sonnet-4.5 "$@"; }
+
