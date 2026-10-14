@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "updated_at": "2026-10-06T05:02:34.898576",
-  "total_plugins": 15,
+  "updated_at": "2026-10-13T22:50:07.466156",
+  "total_plugins": 17,
   "upstream_count": 8,
-  "custom_count": 7,
+  "custom_count": 9,
   "upstream_plugins": [
     {
       "id": "dizziee.auto-wallpaper",
@@ -25,7 +25,7 @@
       "description": "Cline usage stats in the Omarchy bar.",
       "version": "1.1.0",
       "repo_url": "https://github.com/JJDizz1L/dizziee.cline-model-usage.git",
-      "commit": "608f0f62dcb64b60a3d0b9d2037ba42cc5dd40ed",
+      "commit": "917920ae096ef8d3e2339c2f5303f0f04b2a21e3",
       "branch": "master",
       "kinds": [
         "bar-widget"
@@ -37,7 +37,7 @@
       "description": "Arch, AUR, Flatpak, Omarchy, plugins, and mise update indicator with per-repo update buttons.",
       "version": "1.5.0",
       "repo_url": "https://github.com/JJDizz1L/dizziee.system-updates.git",
-      "commit": "74e094a790ce45c0b2d6a5afcaa0d80315c46288",
+      "commit": "ae80cd3dc933e4e0eb18cb7be61672e1e645bde2",
       "branch": "master",
       "kinds": [
         "bar-widget"
@@ -62,7 +62,7 @@
       "description": "CPU, RAM, GPU, disk, network, battery, power, and temperature stats in the bar, with a full system panel: 2m/1h/24h history that survives restarts (the flight recorder), per-metric opt-in alerts with context snapshots, a filterable sortable process table, per-process GPU usage, drive SMART health, an alert hook for automation, and a GAME tab that configures your MangoHud in-game overlay live.",
       "version": "1.2.3",
       "repo_url": "https://github.com/diegopluna/omarchy-argus.git",
-      "commit": "b830cf5688c43d55cd7b4dcf62fe073b4f54bb2d",
+      "commit": "db4cf658b72ed917d695c4c308f52a81f69d1e8a",
       "branch": "main",
       "kinds": [
         "bar-widget"
@@ -86,8 +86,8 @@
       "name": "GitHub",
       "description": "A keyboard-friendly GitHub inbox for notifications, reviews, your own pull requests, assigned issues, Actions, and repositories.",
       "version": "0.3.0",
-      "repo_url": "https://github.com/robzolkos/omarchy-github.git",
-      "commit": "6f361a45ee928119fbb73d26ca2173b9266a9e73",
+      "repo_url": "https://github.com/dragpk247/omarchy-github.git",
+      "commit": "d63e2a1df8afcf268f6e905a920e8476fe017f3a",
       "branch": "main",
       "kinds": [
         "bar-widget"
@@ -129,6 +129,16 @@
       "path": "omarchy/plugins/custom/jpi.monitor"
     },
     {
+      "id": "jpi.power",
+      "name": "My Power",
+      "description": "Battery, power profile, and system stats",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/jpi.power"
+    },
+    {
       "id": "user.agents-control",
       "name": "AI Agents",
       "description": "AI Agent launcher, session manager, and usage tracker",
@@ -157,6 +167,16 @@
         "bar-widget"
       ],
       "path": "omarchy/plugins/custom/user.dev-workflows"
+    },
+    {
+      "id": "user.gpu-switcher",
+      "name": "GPU Mode Switcher",
+      "description": "Switch between Integrated and Hybrid graphics with supergfxctl",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.gpu-switcher"
     },
     {
       "id": "user.kbd-backlight",

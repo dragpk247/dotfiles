@@ -35,7 +35,8 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "io.github.x3me.nexthop"
+          "id": "io.github.x3me.nexthop",
+          "meteredCare": true
         },
         {
           "id": "ucmz851.omasecurity"
@@ -80,7 +81,7 @@
           "id": "jpi.monitor"
         },
         {
-          "id": "omarchy.power",
+          "id": "jpi.power",
           "showPercentage": true
         }
       ]

@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.gpu-switcher",
+  "name": "GPU Mode Switcher",
+  "version": "1.0.0",
+  "author": "jpi",
+  "description": "Switch between Integrated and Hybrid graphics with supergfxctl",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "GPU Mode Switcher",
+    "description": "Toggle Integrated / Hybrid GPU mode",
+    "category": "Hardware",
+    "allowMultiple": false
+  }
+}

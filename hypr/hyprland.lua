@@ -39,3 +39,10 @@ o.window("^(popup-projects)$", {
   size = { 950, 580 },
 })
 
+o.window("^(aider-float)$", {
+  float = true,
+  center = true,
+  size = { 1100, 700 },
+})
+
+

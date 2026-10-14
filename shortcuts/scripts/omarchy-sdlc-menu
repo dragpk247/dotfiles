@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# ==============================================================================
+# omarchy-sdlc-menu: Interactive Omarchy Desktop Menu for AI SDLC & Multi-Tier Pipeline
+# ==============================================================================
+
+TAB=$'\t'
+MENU_OPTIONS=()
+
+MENU_OPTIONS+=("🚀${TAB}Full SDLC Pipeline${TAB}Run complete cycle: Plan -> Code -> Test -> Review -> Commit")
+MENU_OPTIONS+=("🧠${TAB}Phase 1: Architecture & Plan${TAB}Deep reasoning with DeepSeek-R1 14B -> generate PLAN.md")
+MENU_OPTIONS+=("💻${TAB}Phase 2: Code Implementation${TAB}Interactive pair programming with Desktop Qwen 14B & Aider")
+MENU_OPTIONS+=("🧪${TAB}Phase 3: Automated Test & Auto-Repair${TAB}Run test suite & auto-patch failures with AI")
+MENU_OPTIONS+=("🛡️${TAB}Phase 4: Independent Code Review${TAB}Independent audit of git diff with Claude Haiku (OpenRouter)")
+MENU_OPTIONS+=("📦${TAB}Phase 5: Commit & Release${TAB}Generate conventional git commit message and commit")
+MENU_OPTIONS+=("🤖${TAB}Launch Aider (Desktop Qwen 14B)${TAB}Direct floating pair-programmer (100% Free)")
+MENU_OPTIONS+=("☁️${TAB}Launch Aider (Claude Haiku)${TAB}Direct floating pair-programmer (OpenRouter)")
+MENU_OPTIONS+=("💬${TAB}Interactive Terminal Chat${TAB}Chat with AI in terminal (Desktop GPU / Cloud)")
+MENU_OPTIONS+=("🔄${TAB}Sync Vault & AI Sessions${TAB}Export & sync Obsidian conversations across Laptop & Desktop")
+MENU_OPTIONS+=("🌐${TAB}AI Gateway & Observability Dashboard${TAB}Open Requesty-style metrics, virtual keys & cost tracker")
+MENU_OPTIONS+=("🔍${TAB}Check AI Pipeline Health${TAB}Ping Desktop GPU, Local Ollama, and OpenRouter")
+
+CHOICE_RAW=$(omarchy-menu-select "AI SDLC Development Hub" "${MENU_OPTIONS[@]}" -- --width 600)
+
+[ -z "$CHOICE_RAW" ] && exit 0
+CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
+
+case "$CHOICE" in
+    *"Full SDLC Pipeline"*)
+        REQ=$(omarchy-menu-input "Describe the feature or project to build:")
+        [ -z "$REQ" ] && exit 0
+        kitty --class aider-float -e bash -ic "sdlc all '$REQ'; echo ''; echo 'Pipeline finished. Press Enter to close.'; read"
+        ;;
+    *"Phase 1: Architecture & Plan"*)
+        REQ=$(omarchy-menu-input "Feature or architecture requirement:")
+        [ -z "$REQ" ] && exit 0
+        kitty --class aider-float -e bash -ic "sdlc plan '$REQ'; echo ''; echo 'Plan created. Press Enter to close.'; read"
+        ;;
+    *"Phase 2: Code Implementation"*)
+        kitty --class aider-float -e bash -ic "sdlc code"
+        ;;
+    *"Phase 3: Automated Test & Auto-Repair"*)
+        kitty --class aider-float -e bash -ic "sdlc test; echo ''; echo 'Press Enter to close.'; read"
+        ;;
+    *"Phase 4: Independent Code Review"*)
+        kitty --class aider-float -e bash -ic "sdlc review; echo ''; echo 'Press Enter to close.'; read"
+        ;;
+    *"Phase 5: Commit & Release"*)
+        kitty --class aider-float -e bash -ic "sdlc ship; echo ''; echo 'Press Enter to close.'; read"
+        ;;
+    *"Launch Aider (Desktop Qwen 14B)"*)
+        kitty --class aider-float -e bash -ic "aq"
+        ;;
+    *"Launch Aider (Claude Haiku)"*)
+        kitty --class aider-float -e bash -ic "ah"
+        ;;
+    *"Interactive Terminal Chat"*)
+        kitty --class aider-float -e bash -ic "chat"
+        ;;
+    *"Sync Vault & AI Sessions"*)
+        kitty --class aider-float -e bash -ic "sync-vault; echo ''; echo 'Press Enter to close.'; read"
+        ;;
+    *"AI Gateway & Observability Dashboard"*)
+        xdg-open "http://localhost:8000/dashboard"
+        ;;
+    *"Check AI Pipeline Health"*)
+        ~/.local/bin/ai-startup-check
+        ;;
+esac

@@ -24,6 +24,10 @@
 -- hl.unbind("SUPER + SHIFT + B")
 
 -- Productivity Keybindings
+o.bind("SUPER + SHIFT + R", "Omarchy AI Gateway Dashboard", "xdg-open http://localhost:8000/dashboard")
+o.bind("SUPER + D", "AI SDLC Development Hub", "omarchy-sdlc-menu")
+o.bind("SUPER + SHIFT + A", "Aider (Desktop Free Qwen)", "kitty --class aider-float -e bash -ic aq")
+o.bind("SUPER + ALT + A", "Aider (Claude Haiku)", "kitty --class aider-float -e bash -ic ah")
 o.bind("SUPER + GRAVE", "Dropdown scratchpad terminal", "toggle-dropdown-terminal")
 o.bind("SUPER + SHIFT + T", "Extract text from screen (OCR)", "omarchy capture text")
 o.bind("SUPER + ALT + B", "Toggle battery limit (80% / 100%)", "asus-battery-toggle")
