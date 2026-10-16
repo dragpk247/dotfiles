@@ -1,0 +1,4 @@
+Host omarchy-desktop jordansdesktop jordandesktop
+    HostName 100.86.159.86
+    User jpi
+    StrictHostKeyChecking accept-new
