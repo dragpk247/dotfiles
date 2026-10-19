@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  OMNI PHONE — Dedicated S24 Mobile Workstation Interface
+#  OMNI PHONE — Dedicated Mobile Workstation Interface
 # ==============================================================================
 
-# Source Core
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
-  source "$SCRIPT_DIR/omni-core.sh"
-elif [ -f "$HOME/bin/omni-core.sh" ]; then
-  source "$HOME/bin/omni-core.sh"
-elif [ -f "$HOME/dotfiles/bin/omni-core.sh" ]; then
-  source "$HOME/dotfiles/bin/omni-core.sh"
-fi
+source "$SCRIPT_DIR/omni-core.sh"
 
 toggle_wakelock() {
   if [ -f "$PREFIX/var/run/wake-lock" ]; then
@@ -31,7 +24,7 @@ while true; do
   d_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$DESKTOP_IP" && d_stat="${C_GREEN}Online${C_RESET}"
   l_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$LAPTOP_IP" && l_stat="${C_GREEN}Online${C_RESET}"
   
-  omni_render_header "Samsung Galaxy S24" "│ 🔋 $b_stat │ Desktop: $d_stat │ Laptop: $l_stat"
+  omni_render_header "Mobile Terminal" "│ 🔋 $b_stat │ Desktop: $d_stat │ Laptop: $l_stat"
 
   echo -e "${C_CYAN}${C_BOLD}  🧠 SMART COPILOT & CLIPBOARD (Phone-Native)${C_RESET}"
   echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Ask Copilot           (Desktop GPU / Local fallback)"
@@ -40,7 +33,7 @@ while true; do
   echo -e "  ${C_CYAN}[4]${C_RESET} 🛡️  Check Sentinel Guard   (guard)"
   echo -e "  ${C_CYAN}[w]${C_RESET} 🔔 Toggle Wake Lock      (Clear/keep notification)"
   echo ""
-  echo -e "${C_GREEN}${C_BOLD}  🤖 REMOTE AI WORKSPACES (Desktop RTX 5070 Ti)${C_RESET}"
+  echo -e "${C_GREEN}${C_BOLD}  🤖 REMOTE AI WORKSPACES (Desktop GPU)${C_RESET}"
   echo -e "  ${C_CYAN}[5]${C_RESET} 🚀 Antigravity / Agy      (Desktop 'ai' session)"
   echo -e "  ${C_CYAN}[6]${C_RESET} 🟣 Claude Code            (Desktop 'claude' session)"
   echo -e "  ${C_CYAN}[7]${C_RESET} 💻 Aider Pair Programmer  (Desktop 'aider' session)"
@@ -52,7 +45,7 @@ while true; do
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
   echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop Terminal (SSH)"
   echo ""
-  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER (Desktop <-> Laptop <-> S24)${C_RESET}"
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER${C_RESET}"
   echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Desktop or Laptop (omni send)"
   echo ""
   echo -e "${C_MAGENTA}${C_BOLD}  🔄 SYSTEM & MAINTENANCE${C_RESET}"
@@ -68,17 +61,17 @@ while true; do
     3) ~/bin/clip-run ;;
     4) ~/bin/smart-guard.sh && echo -e "${C_GREEN}🛡️ Battery & Thermals: SAFE${C_RESET}" ;;
     w|W) toggle_wakelock ;;
-    5) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/ap" ;;
-    6) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/claude-phone" ;;
-    7) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/aider-phone" ;;
-    8) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/jev-chat" ;;
-    t|T) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/desk-status" ;;
-    u|U) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
-    k|K) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
-    l|L) ssh -o ConnectTimeout=3 -t jpi@$LAPTOP_IP ;;
+    5) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
+    6) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
+    7) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;
+    8) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat" ;;
+    t|T) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status" ;;
+    u|U) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
+    k|K) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
+    l|L) ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}" ;;
     f|F)
       read -e -p "Enter path to file: " fpath
-      [ -n "$fpath" ] && ~/bin/omni-send "$fpath"
+      [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     y|Y) sync-down ;;
     s|S) exit 0 ;;

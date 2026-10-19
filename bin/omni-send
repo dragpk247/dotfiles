@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
 #  OMNI SEND — Universal 3-Way File & Folder Transfer Engine
-#  Transfers seamlessly between: Desktop <-> Laptop <-> S24 Phone
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
-  source "$SCRIPT_DIR/omni-core.sh"
-elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
-  source "$HOME/.local/bin/omni-core.sh"
-elif [ -f "$HOME/bin/omni-core.sh" ]; then
-  source "$HOME/bin/omni-core.sh"
-fi
+source "$SCRIPT_DIR/omni-core.sh"
 
 ITEM="${1:-}"
 if [ -z "$ITEM" ] || [ "$ITEM" = "-h" ] || [ "$ITEM" = "--help" ]; then
@@ -34,22 +27,22 @@ if [ -z "$TARGET" ]; then
   echo -e "${C_CYAN}Sending '${BASENAME}'... Choose destination:${C_RESET}"
   case "$CURRENT_DEV" in
     desktop)
-      echo -e "  ${C_GREEN}[1]${C_RESET} 📱 S24 Phone (/sdcard/Download/)"
-      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Arch Laptop (~/Downloads/)"
+      echo -e "  ${C_GREEN}[1]${C_RESET} 📱 Phone (${PHONE_DOWNLOADS})"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Laptop (${LAPTOP_DOWNLOADS})"
       read -r -p "Target [1-2]: " dest_choice
       [ "$dest_choice" = "1" ] && TARGET="phone"
       [ "$dest_choice" = "2" ] && TARGET="laptop"
       ;;
     laptop)
-      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (~/Downloads/)"
-      echo -e "  ${C_GREEN}[2]${C_RESET} 📱 S24 Phone (/sdcard/Download/)"
+      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (${DESKTOP_DOWNLOADS})"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 📱 Phone (${PHONE_DOWNLOADS})"
       read -r -p "Target [1-2]: " dest_choice
       [ "$dest_choice" = "1" ] && TARGET="desktop"
       [ "$dest_choice" = "2" ] && TARGET="phone"
       ;;
     phone)
-      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (~/Downloads/)"
-      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Arch Laptop (~/Downloads/)"
+      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (${DESKTOP_DOWNLOADS})"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Laptop (${LAPTOP_DOWNLOADS})"
       read -r -p "Target [1-2]: " dest_choice
       [ "$dest_choice" = "1" ] && TARGET="desktop"
       [ "$dest_choice" = "2" ] && TARGET="laptop"
@@ -57,9 +50,8 @@ if [ -z "$TARGET" ]; then
   esac
 fi
 
-# Normalize Target
 case "$TARGET" in
-  --phone|phone|s24|mobile) DEST="phone" ;;
+  --phone|phone|mobile) DEST="phone" ;;
   --laptop|laptop|lap) DEST="laptop" ;;
   --desktop|desktop|desk) DEST="desktop" ;;
   *) echo -e "${C_RED}[!] Invalid destination: $TARGET${C_RESET}"; exit 1 ;;
@@ -70,35 +62,32 @@ echo -e "\n${C_CYAN}[*] Transferring '$BASENAME' to $DEST...${C_RESET}"
 case "$DEST" in
   phone)
     if ! omni_is_online "$PHONE_IP"; then
-      echo -e "${C_RED}[!] S24 Phone is unreachable on Tailscale ($PHONE_IP).${C_RESET}"
+      echo -e "${C_RED}[!] Phone is unreachable ($PHONE_IP).${C_RESET}"
       exit 1
     fi
-    scp -P "$PHONE_PORT" -r "$ITEM" "${PHONE_USER}@${PHONE_IP}:~/storage/downloads/" && {
-      echo -e "${C_GREEN}[✓] Successfully sent to S24 Download folder!${C_RESET}"
-      # Send notification to Android
+    scp -P "$PHONE_PORT" -r "$ITEM" "${PHONE_USER}@${PHONE_IP}:${PHONE_DOWNLOADS}/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Phone Downloads!${C_RESET}"
       ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-notification --title 'OMNI File Received' --content '$BASENAME saved to Downloads' 2>/dev/null" || true
     }
     ;;
   desktop)
     if ! omni_is_online "$DESKTOP_IP"; then
-      echo -e "${C_RED}[!] Desktop is unreachable on Tailscale ($DESKTOP_IP).${C_RESET}"
+      echo -e "${C_RED}[!] Desktop is unreachable ($DESKTOP_IP).${C_RESET}"
       exit 1
     fi
-    scp -r "$ITEM" "jpi@${DESKTOP_IP}:~/Downloads/" && {
-      echo -e "${C_GREEN}[✓] Successfully sent to Desktop ~/Downloads/!${C_RESET}"
-      # Send notification to Desktop
-      ssh "jpi@${DESKTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to ~/Downloads' 2>/dev/null" || true
+    scp -r "$ITEM" "${DESKTOP_USER}@${DESKTOP_IP}:${DESKTOP_DOWNLOADS}/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Desktop!${C_RESET}"
+      ssh "${DESKTOP_USER}@${DESKTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to Downloads' 2>/dev/null" || true
     }
     ;;
   laptop)
     if ! omni_is_online "$LAPTOP_IP"; then
-      echo -e "${C_RED}[!] Laptop is unreachable on Tailscale ($LAPTOP_IP).${C_RESET}"
+      echo -e "${C_RED}[!] Laptop is unreachable ($LAPTOP_IP).${C_RESET}"
       exit 1
     fi
-    scp -r "$ITEM" "jpi@${LAPTOP_IP}:~/Downloads/" && {
-      echo -e "${C_GREEN}[✓] Successfully sent to Laptop ~/Downloads/!${C_RESET}"
-      # Send notification to Laptop
-      ssh "jpi@${LAPTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to ~/Downloads' 2>/dev/null" || true
+    scp -r "$ITEM" "${LAPTOP_USER}@${LAPTOP_IP}:${LAPTOP_DOWNLOADS}/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Laptop!${C_RESET}"
+      ssh "${LAPTOP_USER}@${LAPTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to Downloads' 2>/dev/null" || true
     }
     ;;
 esac

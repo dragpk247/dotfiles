@@ -1,17 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  OMNI DESKTOP — Dedicated Desktop RTX 5070 Ti Workstation Interface
+#  OMNI DESKTOP — Dedicated Workstation Interface
 # ==============================================================================
 
-# Source Core
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
-  source "$SCRIPT_DIR/omni-core.sh"
-elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
-  source "$HOME/.local/bin/omni-core.sh"
-elif [ -f "$HOME/dotfiles/bin/omni-core.sh" ]; then
-  source "$HOME/dotfiles/bin/omni-core.sh"
-fi
+source "$SCRIPT_DIR/omni-core.sh"
 
 while true; do
   p_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}Online${C_RESET}"
@@ -26,19 +19,20 @@ while true; do
   echo -e "  ${C_CYAN}[4]${C_RESET} 🕊️  Hermes Gateway         (Local 'hermes' session)"
   echo -e "  ${C_CYAN}[5]${C_RESET} ⚡ Jev Intelligent Router (Interactive chat)"
   echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  📱 S24 MOBILE PHONE (100.118.50.88)${C_RESET}"
+  echo -e "${C_MAGENTA}${C_BOLD}  📱 MOBILE PHONE ($PHONE_IP)${C_RESET}"
   echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell (Port $PHONE_PORT)"
   echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror    (scrcpy)"
   echo -e "  ${C_CYAN}[y]${C_RESET} 📤 Push Updates to Phone"
   echo ""
-  echo -e "${C_YELLOW}${C_BOLD}  💻 LAPTOP (100.72.213.23)${C_RESET}"
+  echo -e "${C_YELLOW}${C_BOLD}  💻 LAPTOP ($LAPTOP_IP)${C_RESET}"
   echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop SSH Shell"
-  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER (Desktop <-> Laptop <-> S24)${C_RESET}"
-  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Laptop or S24 Phone (omni send)"
+  echo ""
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER${C_RESET}"
+  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Laptop or Phone (omni send)"
   echo ""
   echo -e "${C_GREEN}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
   echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Local System Monitor   (htop / desk-top)"
-  echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 NVIDIA RTX 5070 Ti Top"
+  echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 NVIDIA GPU Status"
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
   echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
   echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
@@ -46,11 +40,11 @@ while true; do
   read -r -p "Select option: " choice
 
   case "$choice" in
-    1) /home/jpi/ap ;;
-    2) /home/jpi/.local/bin/claude-phone ;;
-    3) /home/jpi/.local/bin/aider-phone ;;
+    1) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
+    2) [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude ;;
+    3) [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider ;;
     4) tmux attach -t hermes 2>/dev/null || tmux new-session -s hermes 'hermes chat' ;;
-    5) /home/jpi/.local/bin/jev-chat ;;
+    5) [ -f "$HOME/.local/bin/jev-chat" ] && "$HOME/.local/bin/jev-chat" ;;
     9) ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" ;;
     0) 
       adb connect "${PHONE_IP}:5555" 2>/dev/null || true
@@ -61,13 +55,12 @@ while true; do
       [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     y|Y)
-      echo -e "${C_CYAN}[*] Pushing phone-hub updates to S24...${C_RESET}"
-      scp -P "$PHONE_PORT" -r /home/jpi/phone-hub/bin/* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null
-      scp -P "$PHONE_PORT" /home/jpi/phone-hub/bashrc "${PHONE_USER}@${PHONE_IP}:~/.bashrc" 2>/dev/null && \
+      echo -e "${C_CYAN}[*] Pushing phone-hub updates to phone...${C_RESET}"
+      scp -P "$PHONE_PORT" -r "$SCRIPT_DIR"/* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
         echo -e "${C_GREEN}[✓] Phone updated from Desktop!${C_RESET}" || echo -e "${C_RED}[!] Push failed.${C_RESET}"
       ;;
-    l|L) ssh -o ConnectTimeout=3 -t jpi@$LAPTOP_IP ;;
-    t|T) /home/jpi/.local/bin/desk-status 2>/dev/null || htop ;;
+    l|L) ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}" ;;
+    t|T) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
     u|U) nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader ;;
     k|K) loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true ;;
     s|S) exit 0 ;;

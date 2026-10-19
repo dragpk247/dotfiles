@@ -1,18 +1,12 @@
 #!/usr/bin/env bash
 # ==============================================================================
-#  OMNI — Hardware-Aware Multi-Device Command & Control Center
+#  OMNI — Open-Source Multi-Device Command & Control Center
+#  Author: Jordan Isaac (dragpk247)
 # ==============================================================================
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
-  source "$SCRIPT_DIR/omni-core.sh"
-elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
-  source "$HOME/.local/bin/omni-core.sh"
-elif [ -f "$HOME/bin/omni-core.sh" ]; then
-  source "$HOME/bin/omni-core.sh"
-fi
+source "$SCRIPT_DIR/omni-core.sh"
 
-# Detect hardware
 CURRENT_DEVICE=$(omni_detect_device)
 
 case "${1:-}" in
@@ -25,6 +19,14 @@ case "${1:-}" in
   --desktop|desktop-ui)
     exec "$SCRIPT_DIR/omni-desktop"
     ;;
+  setup|--setup)
+    omni_run_setup
+    exit 0
+    ;;
+  send)
+    shift
+    exec "$SCRIPT_DIR/omni-send" "$@"
+    ;;
   ""|menu)
     case "$CURRENT_DEVICE" in
       phone) exec "$SCRIPT_DIR/omni-phone" ;;
@@ -34,57 +36,30 @@ case "${1:-}" in
     esac
     ;;
   help|-h|--help)
-    echo "OMNI — Intelligent Multi-Device Command Center (Current: $CURRENT_DEVICE)"
-    echo "Usage: omni [menu|--phone|--laptop|--desktop]"
-    echo "       omni <direct-command> (e.g. omni ask, omni top, omni gpu, omni lock)"
+    echo "OMNI — Intelligent Multi-Device Command Center"
+    echo "Device detected: $CURRENT_DEVICE"
+    echo "Usage: omni [menu|send|setup|--phone|--laptop|--desktop]"
+    echo "       omni <command> (e.g. omni send file.txt, omni setup)"
     exit 0
     ;;
-  send)
-    shift
-    exec "$SCRIPT_DIR/omni-send" "$@"
-    ;;
-  # Direct shortcuts
   ask)
     shift
-    if [ "$CURRENT_DEVICE" = "phone" ]; then
-      ~/bin/ask "$@"
+    if [ -f "$HOME/bin/ask" ]; then
+      "$HOME/bin/ask" "$@"
     else
-      echo "Copilot 'ask' is available on phone."
+      echo "Ask copilot is configured on phone."
     fi
     ;;
   clip-ask)
-    ~/bin/clip-ask
+    [ -f "$HOME/bin/clip-ask" ] && "$HOME/bin/clip-ask"
     ;;
   clip-run)
-    ~/bin/clip-run
+    [ -f "$HOME/bin/clip-run" ] && "$HOME/bin/clip-run"
     ;;
   guard)
-    ~/bin/smart-guard.sh && echo "🛡️ Battery & Thermals: SAFE"
-    ;;
-  top|desk-top)
-    if [ "$CURRENT_DEVICE" = "desktop" ]; then
-      /home/jpi/.local/bin/desk-status 2>/dev/null || htop
-    else
-      ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/desk-status"
-    fi
-    ;;
-  gpu|desk-gpu)
-    if [ "$CURRENT_DEVICE" = "desktop" ]; then
-      nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader
-    else
-      ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader"
-    fi
-    ;;
-  lock|desk-lock)
-    if [ "$CURRENT_DEVICE" = "desktop" ]; then
-      loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true
-    else
-      ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "loginctl lock-session 2>/dev/null || true"
-    fi
+    [ -f "$HOME/bin/smart-guard.sh" ] && "$HOME/bin/smart-guard.sh" && echo "🛡️ Battery & Thermals: SAFE"
     ;;
   *)
-    echo "Unknown command: $1. Running default menu for $CURRENT_DEVICE..."
-    sleep 0.5
     case "$CURRENT_DEVICE" in
       phone) exec "$SCRIPT_DIR/omni-phone" ;;
       laptop) exec "$SCRIPT_DIR/omni-laptop" ;;
