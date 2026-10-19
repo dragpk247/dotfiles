@@ -1,0 +1,592 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI CLI — Intelligent Multi-Device Command & Control Center
+# ==============================================================================
+
+set -uo pipefail
+
+DESKTOP_TAILSCALE_IP="100.86.159.86"
+DESKTOP_HOST="jordansdesktop"
+DESKTOP_MAC="34:5a:60:b6:62:e1"
+
+PHONE_TAILSCALE_IP="100.118.50.88"
+PHONE_SSH_PORT="${TERMUX_PORT:-8022}"
+PHONE_SSH_USER="${TERMUX_USER:-}"
+
+STATE_FILE="${XDG_CACHE_HOME:-$HOME/.cache}/omni_cli_state"
+AUTH_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omni/pin.hash"
+SESSION_FILE="/dev/shm/omni_session_${UID}"
+LOCK_TIMEOUT_SECONDS=$((20 * 60)) # 20 minutes
+
+# Terminal Colors
+C_RESET="\033[0m"
+C_BOLD="\033[1m"
+C_CYAN="\033[1;36m"
+C_GREEN="\033[1;32m"
+C_RED="\033[1;31m"
+C_YELLOW="\033[1;33m"
+C_BLUE="\033[1;34m"
+C_MAGENTA="\033[1;35m"
+C_DIM="\033[2m"
+
+# Auto-spawn terminal if launched from GUI/hotkey without TTY
+launch_in_terminal_if_needed() {
+  if [ -z "${CONNECT_IN_TERM:-}" ] && { [ ! -t 0 ] || [ ! -t 1 ]; }; then
+    export CONNECT_IN_TERM=1
+    local term_bin=""
+    if command -v kitty >/dev/null 2>&1; then
+      term_bin="kitty --title 'OMNI CLI' -e"
+    elif command -v foot >/dev/null 2>&1; then
+      term_bin="foot --title 'OMNI CLI'"
+    elif command -v xdg-terminal-exec >/dev/null 2>&1; then
+      term_bin="xdg-terminal-exec"
+    fi
+
+    if [ -n "$term_bin" ] && [ -n "${WAYLAND_DISPLAY:-${DISPLAY:-}}" ]; then
+      exec $term_bin "$0" "$@"
+    fi
+  fi
+}
+
+launch_in_terminal_if_needed "$@"
+
+# PIN & Security Functions
+hash_pin() {
+  local pin="$1"
+  python3 -c "import hashlib; print(hashlib.sha256(b'$pin').hexdigest())"
+}
+
+is_session_valid() {
+  if [ -f "$SESSION_FILE" ]; then
+    local last_ts
+    last_ts=$(cat "$SESSION_FILE" 2>/dev/null || echo 0)
+    local now
+    now=$(date +%s)
+    local diff=$(( now - last_ts ))
+    if [ "$diff" -ge 0 ] && [ "$diff" -lt "$LOCK_TIMEOUT_SECONDS" ]; then
+      # Refresh session timestamp (activity resets timer)
+      echo "$now" > "$SESSION_FILE"
+      return 0
+    fi
+  fi
+  return 1
+}
+
+update_session_activity() {
+  mkdir -p /dev/shm
+  date +%s > "$SESSION_FILE"
+  chmod 600 "$SESSION_FILE" 2>/dev/null || true
+}
+
+lock_cli() {
+  rm -f "$SESSION_FILE"
+}
+
+setup_new_pin() {
+  clear
+  echo -e "${C_CYAN}${C_BOLD}=== OMNI CLI Security Setup ===${C_RESET}\n"
+  echo "No PIN is configured yet. Let's create a secure PIN."
+  while true; do
+    read -rsp "Create new PIN: " p1
+    echo ""
+    read -rsp "Confirm PIN: " p2
+    echo ""
+    if [ -z "$p1" ]; then
+      echo -e "${C_RED}[!] PIN cannot be empty.${C_RESET}\n"
+      continue
+    fi
+    if [ "$p1" != "$p2" ]; then
+      echo -e "${C_RED}[!] PINs did not match, try again.${C_RESET}\n"
+      continue
+    fi
+    mkdir -p "$(dirname "$AUTH_FILE")"
+    hash_pin "$p1" > "$AUTH_FILE"
+    chmod 600 "$AUTH_FILE"
+    echo -e "${C_GREEN}[✓] PIN created successfully!${C_RESET}\n"
+    sleep 1
+    break
+  done
+}
+
+authenticate_user() {
+  if is_session_valid; then
+    return 0
+  fi
+
+  if [ ! -f "$AUTH_FILE" ]; then
+    setup_new_pin
+    update_session_activity
+    return 0
+  fi
+
+  local attempts=0
+  local max_attempts=3
+  local stored_hash
+  stored_hash=$(cat "$AUTH_FILE" 2>/dev/null)
+
+  while [ "$attempts" -lt "$max_attempts" ]; do
+    clear
+    echo -e "${C_CYAN}"
+    cat << "EOF"
+  ___  __  __ _   _ ___   ____ _     ___ 
+ / _ \|  \/  | \ | |_ _| / ___| |   |_ _|
+| | | | |\/| |  \| || | | |   | |    | | 
+| |_| | |  | | |\  || | | |___| |___ | | 
+ \___/|_|  |_|_| \_|___| \____|_____|___|
+EOF
+    echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+    echo -e " ${C_BOLD}🔒 SECURITY LOCKOUT${C_RESET} │ Session expired or inactive > 20m"
+    echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+    
+    read -rsp "Enter PIN to unlock OMNI: " user_pin
+    echo ""
+
+    local entered_hash
+    entered_hash=$(hash_pin "$user_pin")
+
+    if [ "$entered_hash" = "$stored_hash" ]; then
+      update_session_activity
+      return 0
+    else
+      attempts=$((attempts + 1))
+      local remaining=$((max_attempts - attempts))
+      if [ "$remaining" -gt 0 ]; then
+        echo -e "${C_RED}[!] Incorrect PIN. $remaining attempts remaining.${C_RESET}"
+        sleep 1.2
+      else
+        echo -e "\n${C_RED}[!] Too many failed attempts. Access denied.${C_RESET}"
+        sleep 1.5
+        exit 1
+      fi
+    fi
+  done
+  exit 1
+}
+
+# State Helpers (Remember last action)
+get_last_action() {
+  if [ -f "$STATE_FILE" ]; then
+    cat "$STATE_FILE" 2>/dev/null || echo "1"
+  else
+    echo "1"
+  fi
+}
+
+set_last_action() {
+  mkdir -p "$(dirname "$STATE_FILE")"
+  echo "$1" > "$STATE_FILE" 2>/dev/null || true
+}
+
+# Fast Python Port Sniffer & Vitals Collector
+check_vitals_and_services() {
+  python3 -c '
+import socket, json, os, subprocess
+
+def test_port(ip, port, timeout=0.18):
+    try:
+        s = socket.socket()
+        s.settimeout(timeout)
+        ok = (s.connect_ex((ip, port)) == 0)
+        s.close()
+        return ok
+    except Exception:
+        return False
+
+# 1. Services
+dt_ssh = test_port("100.86.159.86", 22)
+dt_sun = test_port("100.86.159.86", 47989)
+ph_ssh = test_port("100.118.50.88", 8022)
+ph_adb = test_port("100.118.50.88", 5555)
+
+# 2. Battery
+bat_str = "AC"
+try:
+    with open("/sys/class/power_supply/BAT0/capacity") as f:
+        cap = f.read().strip()
+    with open("/sys/class/power_supply/BAT0/status") as f:
+        st = f.read().strip()
+    icon = "⚡" if st == "Charging" else "🔋"
+    bat_str = f"{icon} {cap}%"
+except Exception:
+    pass
+
+# 3. Tailscale peers
+ts_online = "?"
+try:
+    out = subprocess.check_output(["tailscale", "status", "--json"], timeout=0.5)
+    data = json.loads(out)
+    peers = data.get("Peer", {}).values()
+    online_count = sum(1 for p in peers if p.get("Online", False))
+    ts_online = f"{online_count}/{len(peers)}"
+except Exception:
+    pass
+
+print(json.dumps({
+    "dt_ssh": dt_ssh,
+    "dt_sun": dt_sun,
+    "ph_ssh": ph_ssh,
+    "ph_adb": ph_adb,
+    "battery": bat_str,
+    "ts_online": ts_online
+}))
+' 2>/dev/null || echo '{"dt_ssh":false,"dt_sun":false,"ph_ssh":false,"ph_adb":false,"battery":"?","ts_online":"?"}'
+}
+
+# Banner Display
+display_banner() {
+  clear
+  echo -e "${C_CYAN}"
+  cat << "EOF"
+  ___  __  __ _   _ ___   ____ _     ___ 
+ / _ \|  \/  | \ | |_ _| / ___| |   |_ _|
+| | | | |\/| |  \| || | | |   | |    | | 
+| |_| | |  | | |\  || | | |___| |___ | | 
+ \___/|_|  |_|_| \_|___| \____|_____|___|
+EOF
+  echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+  
+  # Status ribbon
+  local vitals
+  vitals=$(check_vitals_and_services)
+  
+  DT_SSH=$(echo "$vitals" | jq -r '.dt_ssh' 2>/dev/null || echo false)
+  DT_SUN=$(echo "$vitals" | jq -r '.dt_sun' 2>/dev/null || echo false)
+  PH_SSH=$(echo "$vitals" | jq -r '.ph_ssh' 2>/dev/null || echo false)
+  PH_ADB=$(echo "$vitals" | jq -r '.ph_adb' 2>/dev/null || echo false)
+  BATTERY=$(echo "$vitals" | jq -r '.battery' 2>/dev/null || echo "AC")
+  TS_PEERS=$(echo "$vitals" | jq -r '.ts_online' 2>/dev/null || echo "?")
+
+  echo -e " ${C_BOLD}Host:${C_RESET} $(hostname)  │ ${C_BOLD}Tailscale:${C_RESET} ${TS_PEERS} peers online  │ ${C_BOLD}Power:${C_RESET} ${BATTERY}"
+
+  # Device service line
+  echo -ne " ${C_BOLD}Desktop:${C_RESET} "
+  if [ "$DT_SSH" = "true" ] || [ "$DT_SUN" = "true" ]; then
+    echo -ne "[${C_GREEN}ONLINE${C_RESET}] "
+    [ "$DT_SSH" = "true" ] && echo -ne "${C_DIM}(SSH:🟢)${C_RESET} "
+    [ "$DT_SUN" = "true" ] && echo -ne "${C_DIM}(Moonlight:🟢)${C_RESET} "
+  else
+    echo -ne "[${C_RED}OFFLINE${C_RESET}] "
+  fi
+
+  echo -ne " │ ${C_BOLD}Phone:${C_RESET} "
+  if [ "$PH_SSH" = "true" ] || [ "$PH_ADB" = "true" ]; then
+    echo -ne "[${C_GREEN}ONLINE${C_RESET}] "
+    [ "$PH_SSH" = "true" ] && echo -ne "${C_DIM}(Termux:🟢)${C_RESET} "
+    [ "$PH_ADB" = "true" ] && echo -ne "${C_DIM}(ADB:🟢)${C_RESET} "
+  else
+    echo -ne "[${C_RED}OFFLINE / SLEEP${C_RESET}]"
+  fi
+  echo ""
+  echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+}
+
+# --- Actions ---
+connect_desktop_agy() {
+  echo -e "\n${C_GREEN}[+] Connecting to Antigravity (agy) on $DESKTOP_HOST...${C_RESET}"
+  set_last_action "1"
+  ssh -t "$DESKTOP_HOST" "
+    if tmux has-session -t ai 2>/dev/null; then
+      echo 'Attaching to existing agy tmux session...'
+      tmux attach-session -t ai
+    else
+      echo 'Starting fresh agy in tmux session \"ai\"...'
+      tmux new-session -s ai 'agy'
+    fi
+  "
+}
+
+connect_desktop_gui() {
+  local mode="${1:-Desktop}"
+  local windowed="${2:-false}"
+  echo -e "\n${C_GREEN}[+] Launching Moonlight stream ($mode) to $DESKTOP_HOST...${C_RESET}"
+  local extra_args=()
+  if [ "$windowed" = "true" ]; then
+    extra_args+=(--display-mode windowed)
+    set_last_action "3"
+  else
+    set_last_action "2"
+  fi
+  moonlight stream "${extra_args[@]}" "$DESKTOP_TAILSCALE_IP" "$mode"
+}
+
+connect_desktop_ssh() {
+  echo -e "\n${C_GREEN}[+] Opening SSH session to $DESKTOP_HOST...${C_RESET}\n"
+  set_last_action "4"
+  ssh "$DESKTOP_HOST"
+}
+
+connect_phone_ssh() {
+  local dest="${PHONE_TAILSCALE_IP}"
+  if [ -n "$PHONE_SSH_USER" ]; then
+    dest="${PHONE_SSH_USER}@${PHONE_TAILSCALE_IP}"
+  fi
+  echo -e "\n${C_GREEN}[+] Connecting to Termux shell ($dest:$PHONE_SSH_PORT)...${C_RESET}\n"
+  set_last_action "6"
+  ssh -p "$PHONE_SSH_PORT" "$dest"
+}
+
+connect_phone_mirror() {
+  set_last_action "7"
+  if ! command -v scrcpy >/dev/null 2>&1; then
+    echo -e "\n${C_YELLOW}[!] 'scrcpy' is not installed. To mirror your phone screen, run: sudo pacman -S scrcpy android-tools${C_RESET}"
+    read -rp "Install scrcpy & android-tools now? [y/N]: " ans
+    if [[ "$ans" =~ ^[Yy]$ ]]; then
+      sudo pacman -S --needed scrcpy android-tools
+    else
+      return 1
+    fi
+  fi
+
+  echo -e "\n${C_CYAN}[*] Connecting to phone via adb...${C_RESET}"
+  adb connect "${PHONE_TAILSCALE_IP}:5555" || true
+  scrcpy --stay-awake --turn-screen-off || scrcpy
+}
+
+# Clipboard & Bridge Submenu
+bridge_menu() {
+  while true; do
+    clear
+    echo -e "${C_CYAN}${C_BOLD}═══ OMNI Clipboard & Data Bridge ═══${C_RESET}\n"
+    echo -e "  ${C_CYAN}[1]${C_RESET} 📋 Push Laptop Clipboard ➔ Phone Termux"
+    echo -e "  ${C_CYAN}[2]${C_RESET} 📥 Pull Phone Termux Clipboard ➔ Laptop"
+    echo -e "  ${C_CYAN}[3]${C_RESET} 🖥️  Push Laptop Clipboard ➔ Desktop"
+    echo -e "  ${C_CYAN}[4]${C_RESET} 📸 Send Latest Screenshot to Phone"
+    echo -e "  ${C_CYAN}[b]${C_RESET} ⬅️  Back to Main Menu"
+    echo ""
+    read -rsn1 -p "Select bridge action [1-4, b]: " b_choice
+    echo ""
+
+    case "$b_choice" in
+      1)
+        if command -v wl-paste >/dev/null 2>&1; then
+          local clip
+          clip=$(wl-paste 2>/dev/null || true)
+          if [ -n "$clip" ]; then
+            echo "$clip" | ssh -p "$PHONE_SSH_PORT" "$PHONE_TAILSCALE_IP" "termux-clipboard-set" 2>/dev/null && \
+              echo -e "${C_GREEN}[✓] Clipboard pushed to phone!${C_RESET}" || \
+              echo -e "${C_RED}[!] Failed (ensure termux-api is installed on phone)${C_RESET}"
+          else
+            echo -e "${C_YELLOW}[!] Clipboard is empty.${C_RESET}"
+          fi
+        fi
+        read -rp "Press Enter to continue..." _
+        ;;
+      2)
+        local phone_clip
+        phone_clip=$(ssh -p "$PHONE_SSH_PORT" "$PHONE_TAILSCALE_IP" "termux-clipboard-get" 2>/dev/null || true)
+        if [ -n "$phone_clip" ] && command -v wl-copy >/dev/null 2>&1; then
+          echo -n "$phone_clip" | wl-copy
+          echo -e "${C_GREEN}[✓] Pulled phone clipboard into laptop clipboard!${C_RESET}"
+        else
+          echo -e "${C_RED}[!] Could not pull clipboard (check Termux SSH/termux-api).${C_RESET}"
+        fi
+        read -rp "Press Enter to continue..." _
+        ;;
+      3)
+        if command -v wl-paste >/dev/null 2>&1; then
+          local clip
+          clip=$(wl-paste 2>/dev/null || true)
+          echo "$clip" | ssh "$DESKTOP_HOST" "wl-copy 2>/dev/null || xclip -selection clipboard 2>/dev/null || true"
+          echo -e "${C_GREEN}[✓] Pushed clipboard to desktop!${C_RESET}"
+        fi
+        read -rp "Press Enter to continue..." _
+        ;;
+      4)
+        local latest_shot
+        latest_shot=$(ls -t ~/Pictures/Screenshots/*.png ~/Pictures/*.png 2>/dev/null | head -n 1 || true)
+        if [ -n "$latest_shot" ]; then
+          echo -e "${C_CYAN}[*] Sending $latest_shot to Phone ~/storage/shared/Download/...${C_RESET}"
+          scp -P "$PHONE_SSH_PORT" "$latest_shot" "${PHONE_TAILSCALE_IP}:~/storage/shared/Download/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Screenshot sent to phone Downloads!${C_RESET}" || \
+            echo -e "${C_RED}[!] Failed sending screenshot.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] No recent screenshots found.${C_RESET}"
+        fi
+        read -rp "Press Enter to continue..." _
+        ;;
+      b|B|q|Q)
+        return 0
+        ;;
+    esac
+  done
+}
+
+# Wake-on-LAN Trigger
+send_wol() {
+  echo -e "\n${C_CYAN}[*] Sending Wake-on-LAN magic packet to Desktop ($DESKTOP_MAC)...${C_RESET}"
+  python3 -c "
+import socket
+mac = '$DESKTOP_MAC'.replace(':', '')
+data = bytes.fromhex('F' * 12 + mac * 16)
+sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+sock.sendto(data, ('255.255.255.255', 9))
+sock.sendto(data, ('10.143.225.255', 9))
+sock.close()
+" 2>/dev/null && echo -e "${C_GREEN}[✓] Magic packet broadcasted across LAN.${C_RESET}" || echo -e "${C_RED}[!] Failed to send WOL.${C_RESET}"
+}
+
+# Main Interactive Loop
+run_menu() {
+  while true; do
+    display_banner
+    local last_act
+    last_act=$(get_last_action)
+    
+    local default_hint="1 (Desktop AI)"
+    case "$last_act" in
+      1) default_hint="1 (Desktop AI)" ;;
+      2) default_hint="2 (Moonlight Fullscreen)" ;;
+      3) default_hint="3 (Moonlight Windowed)" ;;
+      4) default_hint="4 (Desktop SSH)" ;;
+      5) default_hint="5 (Steam Big Picture)" ;;
+      6) default_hint="6 (Phone SSH)" ;;
+      7) default_hint="7 (Phone Mirror)" ;;
+    esac
+
+    echo -e "${C_BOLD}Select an action (Single key press, no Enter needed):${C_RESET}"
+    echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Desktop AI (Antigravity)"
+    echo -e "  ${C_CYAN}[2]${C_RESET} 🖥️  Desktop GUI (Moonlight Fullscreen)"
+    echo -e "  ${C_CYAN}[3]${C_RESET} 🖥️  Desktop GUI (Moonlight Windowed)"
+    echo -e "  ${C_CYAN}[4]${C_RESET} 💻 Desktop SSH Terminal Session"
+    echo -e "  ${C_CYAN}[5]${C_RESET} 🎮 Desktop Steam Big Picture Mode"
+    echo -e "  ${C_CYAN}[6]${C_RESET} 📱 Phone Termux SSH Shell (Port $PHONE_SSH_PORT)"
+    echo -e "  ${C_CYAN}[7]${C_RESET} 📱 Phone Screen Mirror (scrcpy)"
+    echo -e "  ${C_MAGENTA}[p]${C_RESET} 🌉 Bridge (Clipboard sync & file send)"
+    echo -e "  ${C_YELLOW}[w]${C_RESET} ⚡ Wake-on-LAN (Wake Desktop)"
+    echo -e "  ${C_CYAN}[r]${C_RESET} 🔄 Refresh Status"
+    echo -e "  ${C_RED}[l]${C_RESET} 🔒 Lock Session Now"
+    echo -e "  ${C_GREEN}[s]${C_RESET} 🐚 Regular Local CLI (Drop to Shell)"
+    echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
+    echo ""
+    echo -ne "${C_DIM}[Enter = resume last action: ${default_hint}]${C_RESET}\n${C_BOLD}Choice > ${C_RESET}"
+
+    # Read single character instantly without requiring Enter key
+    local choice=""
+    IFS= read -rsn1 choice
+    echo "$choice"
+
+    # Handle Enter key -> resume last action
+    if [ -z "$choice" ]; then
+      choice="$last_act"
+    fi
+
+    case "$choice" in
+      1) connect_desktop_agy ;;
+      2) connect_desktop_gui "Desktop" false ;;
+      3) connect_desktop_gui "Desktop" true ;;
+      4) connect_desktop_ssh ;;
+      5) connect_desktop_gui "Steam Big Picture" false ;;
+      6) connect_phone_ssh ;;
+      7) connect_phone_mirror ;;
+      p|P) bridge_menu ;;
+      w|W) send_wol ;;
+      r|R) continue ;;
+      l|L|lock)
+        lock_cli
+        echo -e "${C_YELLOW}[!] Session locked.${C_RESET}"
+        authenticate_user
+        ;;
+      s|S|cli|sh)
+        echo -e "${C_GREEN}[+] Dropping to regular local shell... (Type 'connect' or 'omni' anytime to reopen)${C_RESET}"
+        return 0
+        ;;
+      e|E|q|Q|0)
+        echo -e "${C_DIM}Goodbye!${C_RESET}"
+        exit 0
+        ;;
+      *)
+        echo -e "${C_RED}Invalid option: '$choice'${C_RESET}"
+        sleep 0.8
+        ;;
+    esac
+    echo ""
+    read -rp "Press Enter to continue..." _
+  done
+}
+
+show_help() {
+  cat <<EOF
+Usage: omni [command]  (or: connect [command])
+
+Interactive:
+  omni                Launch the intelligent OMNI CLI dashboard
+
+Direct Shortcuts:
+  omni agy            Connect to Desktop Antigravity (agy in tmux)
+  omni desk           Stream Desktop GUI Fullscreen (Moonlight)
+  omni desk -w        Stream Desktop GUI Windowed
+  omni desk-ssh       SSH into desktop
+  omni steam          Stream Steam Big Picture
+  omni phone          SSH into phone (Termux)
+  omni phone-gui      Mirror phone screen (scrcpy)
+  omni bridge         Open clipboard & file bridge menu
+  omni wol            Send Wake-On-LAN packet to desktop
+  omni lock           Immediately lock session (require PIN)
+  omni set-pin        Change or reset PIN
+
+Security:
+  • Requires PIN to access OMNI CLI.
+  • Automatically locks after 20 minutes of inactivity.
+  • Any command or menu action refreshes the 20-minute session.
+EOF
+}
+
+# Subcommands
+case "${1:-}" in
+  -h|--help|help)
+    show_help
+    exit 0
+    ;;
+  lock)
+    lock_cli
+    echo "OMNI CLI session locked."
+    exit 0
+    ;;
+  set-pin|reset-pin)
+    setup_new_pin
+    exit 0
+    ;;
+esac
+
+# Require PIN authentication for interactive and direct shortcuts
+authenticate_user
+
+case "${1:-}" in
+  ""|menu)
+    run_menu
+    ;;
+  agy|ai|antigravity)
+    connect_desktop_agy
+    ;;
+  desk|desktop|gui)
+    if [[ "${2:-}" == "-w" || "${2:-}" == "--windowed" ]]; then
+      connect_desktop_gui "Desktop" true
+    else
+      connect_desktop_gui "Desktop" false
+    fi
+    ;;
+  desk-ssh|desktop-ssh|ssh)
+    connect_desktop_ssh
+    ;;
+  steam)
+    connect_desktop_gui "Steam Big Picture" false
+    ;;
+  phone|termux)
+    connect_phone_ssh
+    ;;
+  phone-gui|scrcpy|mirror)
+    connect_phone_mirror
+    ;;
+  bridge|clip|clipboard)
+    bridge_menu
+    ;;
+  wol|wake)
+    send_wol
+    ;;
+  *)
+    echo "Unknown command: $1"
+    show_help
+    exit 1
+    ;;
+esac

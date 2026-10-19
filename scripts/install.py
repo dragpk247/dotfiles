@@ -74,7 +74,9 @@ def install_plugins():
             print(f"    Warning: Custom plugin source not found for {pid} at {src}")
             continue
 
-        if target.exists():
+        if target.is_symlink() or target.is_file():
+            target.unlink()
+        elif target.exists():
             shutil.rmtree(target)
         shutil.copytree(src, target)
         print(f"    [Installed] {pid} -> {target}")
@@ -155,6 +157,22 @@ def install_hexacore():
         else:
             print("    HexaCore keybinding already present in bindings.lua.")
 
+def install_omni():
+    print("==> Installing OMNI CLI and remote tools...")
+    BIN_DEST.mkdir(parents=True, exist_ok=True)
+    omni_src = DOTFILES_DIR / "bin" / "omni"
+    omni_dest = BIN_DEST / "omni"
+    connect_dest = BIN_DEST / "connect"
+    if omni_src.exists():
+        omni_src.chmod(0o755)
+        if omni_dest.exists() or omni_dest.is_symlink():
+            omni_dest.unlink()
+        omni_dest.symlink_to(omni_src)
+        if connect_dest.exists() or connect_dest.is_symlink():
+            connect_dest.unlink()
+        connect_dest.symlink_to(omni_src)
+        print(f"    Linked {omni_dest} and {connect_dest} -> {omni_src}")
+
 def install_cli():
     print("==> Setting up omarchy-dotfiles CLI...")
     cli_src = DOTFILES_DIR / "bin" / "omarchy-dotfiles"
@@ -171,6 +189,7 @@ def main():
     install_shell_config()
     install_shortcuts()
     install_hexacore()
+    install_omni()
     install_cli()
     print("\n✓ All components installed successfully!")
 

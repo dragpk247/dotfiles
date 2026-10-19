@@ -1,0 +1,9 @@
+# Extra keys row configuration for Samsung S24
+# Tailored for Samsung S24 screen aspect ratio and one-thumb control
+
+extra-keys-style = arrows-only
+
+extra-keys = [ \
+  ['ESC', 'TAB', 'CTRL', 'ALT', {key: 'KEYBOARD', display: '⌨'}, 'UP', 'DOWN'], \
+  ['~', '/', '|', '-', '_', '"', 'LEFT', 'RIGHT'] \
+]

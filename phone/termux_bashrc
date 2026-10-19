@@ -1,0 +1,249 @@
+# ==========================================
+# Termux Configuration - Samsung S24
+# ==========================================
+
+# ── Colors & Styles ──
+C_RESET="\033[0m"
+C_BOLD="\033[1m"
+C_DIM="\033[2m"
+C_CYAN="\033[36m"
+C_GREEN="\033[32m"
+C_YELLOW="\033[33m"
+C_RED="\033[31m"
+C_PURPLE="\033[35m"
+C_BLUE="\033[34m"
+
+# ==========================================
+# 🔒 S24 SECURITY GATE (Biometric + PIN Fallback + 15-Min Timer)
+# ==========================================
+# Grants a 15-minute (900s) grace period so you don't have to enter PIN constantly
+if [[ $- == *i* ]]; then
+    _s24_authenticate() {
+        local auth_success=0
+        local pin_hash_file="$HOME/.termux_pin_hash"
+        local auth_token_file="${TMPDIR:-$HOME/.cache}/.s24_auth_token"
+        local auth_timeout=900  # 15 minutes grace period
+
+        # Check if active session token exists and is still valid
+        if [ -f "$auth_token_file" ]; then
+            local token_time
+            token_time=$(cat "$auth_token_file" 2>/dev/null || echo 0)
+            local current_time
+            current_time=$(date +%s)
+            local elapsed=$((current_time - token_time))
+
+            if [ $elapsed -ge 0 ] && [ $elapsed -lt $auth_timeout ]; then
+                # Refresh token and bypass PIN
+                echo "$current_time" > "$auth_token_file" 2>/dev/null
+                return 0
+            fi
+        fi
+
+        # 1. Try Samsung Biometric Fingerprint (if termux-api is installed)
+        if command -v termux-fingerprint >/dev/null 2>&1; then
+            echo -e "${C_CYAN}🔐 S24 Security: Touch fingerprint sensor...${C_RESET}"
+            local fp_res
+            fp_res=$(termux-fingerprint -t "Verify S24 Terminal" -d "Touch sensor or press cancel for PIN" 2>&1)
+            if echo "$fp_res" | grep -q '"auth_result": "AUTH_RESULT_SUCCESS"'; then
+                auth_success=1
+            fi
+        fi
+
+        # 2. PIN Fallback (if fingerprint cancelled, failed, or termux-api not present)
+        if [ $auth_success -ne 1 ]; then
+            if [ ! -f "$pin_hash_file" ]; then
+                echo -e "${C_YELLOW}⚠ No PIN configured. Let's create a 4-8 digit Termux security PIN:${C_RESET}"
+                read -s -p "Enter new PIN: " new_pin
+                echo ""
+                read -s -p "Confirm PIN: " conf_pin
+                echo ""
+                if [ -n "$new_pin" ] && [ "$new_pin" = "$conf_pin" ]; then
+                    echo -n "$new_pin" | sha256sum | awk '{print $1}' > "$pin_hash_file"
+                    chmod 600 "$pin_hash_file"
+                    echo -e "${C_GREEN}✓ PIN successfully set!${C_RESET}"
+                    auth_success=1
+                else
+                    echo -e "${C_RED}✖ PINs did not match or empty. Exiting.${C_RESET}"
+                    exit 1
+                fi
+            else
+                local attempts=3
+                while [ $attempts -gt 0 ]; do
+                    read -s -p "🔑 Enter Security PIN ($attempts attempts left): " entered_pin
+                    echo ""
+                    local entered_hash
+                    entered_hash=$(echo -n "$entered_pin" | sha256sum | awk '{print $1}')
+                    local expected_hash
+                    expected_hash=$(cat "$pin_hash_file" 2>/dev/null)
+
+                    if [ "$entered_hash" = "$expected_hash" ]; then
+                        auth_success=1
+                        break
+                    else
+                        attempts=$((attempts - 1))
+                        [ $attempts -gt 0 ] && echo -e "${C_RED}✖ Incorrect PIN.${C_RESET}"
+                    fi
+                done
+            fi
+        fi
+
+        if [ $auth_success -ne 1 ]; then
+            echo -e "\n${C_RED}✖ Authentication failed. Terminal locked.${C_RESET}"
+            sleep 1
+            exit 1
+        fi
+
+        # Save successful authentication timestamp token
+        mkdir -p "${TMPDIR:-$HOME/.cache}" 2>/dev/null
+        date +%s > "$auth_token_file" 2>/dev/null
+        clear
+    }
+
+    _s24_authenticate
+fi
+
+# ── Shell History Settings ──
+export HISTCONTROL=ignoreboth:erasedups
+export HISTSIZE=10000
+export HISTFILESIZE=20000
+shopt -s histappend
+shopt -s checkwinsize 2>/dev/null
+
+# ── Mobile Touch-Optimized Prompt ──
+_s24_prompt() {
+    local exit_code=$?
+    local stat_color="\033[32m"
+    [ $exit_code -ne 0 ] && stat_color="\033[31m"
+    PS1="${stat_color}📱 \033[36m\w ${stat_color}❯\033[0m "
+}
+PROMPT_COMMAND="_s24_prompt"
+
+# ── Tailscale IP Definitions ──
+DESK_IP="100.86.159.86"
+LAP_IP="100.72.213.23"
+SSH_OPTS="-o ConnectTimeout=3 -o ServerAliveInterval=15 -o ServerAliveCountMax=3 -o StrictHostKeyChecking=accept-new"
+
+# ── Fast SSH Connection Wrapper ──
+desk_ssh() {
+    if ! ping -c 1 -W 1 "$DESK_IP" >/dev/null 2>&1; then
+        echo -e "${C_RED}✖ Desktop ($DESK_IP) unreachable via Tailscale.${C_RESET}"
+        return 1
+    fi
+    ssh $SSH_OPTS -t "jpi@$DESK_IP" "$@"
+}
+
+# ── Interactive / Help Menu ──
+menu() {
+    clear
+    echo -e "${C_CYAN}${C_BOLD}=============================================${C_RESET}"
+    echo -e "${C_BOLD}        JORDAN S24  |  COMMAND CONTROL       ${C_RESET}"
+    echo -e "${C_CYAN}=============================================${C_RESET}"
+    echo -e "${C_BOLD}  ⚡ JEV GATEWAY & TELEMETRY${C_RESET}"
+    echo "   jev             - Interactive Jev inference chat"
+    echo "   jev <prompt>    - One-shot routed model inference"
+    echo "   jev-dash        - Open Web Dashboard on phone"
+    echo "   desk-logs       - Live stream router & inference logs"
+    echo ""
+    echo -e "${C_BOLD}  🤖 AI AGENTS & WORKFLOWS (Desktop)${C_RESET}"
+    echo "   desk-agy        - Desktop AI (Antigravity)"
+    echo "   desk-hermes     - Hermes Agent (Gateway & WhatsApp)"
+    echo "   desk-claude     - Claude Code"
+    echo "   desk-aider      - Aider (Terminal Pair Programmer)"
+    echo "   sync-graphify   - Run Graphify AST & Obsidian sync"
+    echo ""
+    echo -e "${C_BOLD}  🖥️  DESKTOP REMOTE MONITORING${C_RESET}"
+    echo "   desk-top        - CPU, RAM & RTX 5070 Ti live dashboard"
+    echo "   desk-gpu        - Quick NVIDIA VRAM & temp read"
+    echo "   desk-lock       - Lock desktop screen instantly"
+    echo "   desk-shell      - Full remote Bash shell"
+    echo ""
+    echo -e "${C_BOLD}  💻 LAPTOP (Arch Linux)${C_RESET}"
+    echo "   lap-agy         - Antigravity on Laptop"
+    echo "   lap-shell       - Full remote Bash shell"
+    echo ""
+    echo -e "${C_BOLD}  🔒 SECURITY & MAINTENANCE${C_RESET}"
+    echo "   reset-pin       - Change your S24 Security PIN"
+    echo "   lock-termux     - Lock screen & exit terminal"
+    echo "   sync-down       - Pull latest config from Desktop"
+    echo "   sync-up         - Push config back to Desktop"
+    echo "   setup-keys      - Apply S24 2-row custom touch keys"
+    echo "   menu (or ?)     - Show this menu"
+    echo -e "${C_CYAN}=============================================${C_RESET}"
+}
+
+# ── Clean S24 Banner on Terminal Launch ──
+if [[ $- == *i* ]]; then
+    # Async / Fast Ping Checks
+    TDIR="${TMPDIR:-$HOME/.cache}"
+    mkdir -p "$TDIR" 2>/dev/null
+    DESK_STAT="${C_YELLOW}Checking...${C_RESET}"
+    (ping -c 1 -W 1 "$DESK_IP" >/dev/null 2>&1 && echo "online" > "$TDIR/.s24_desk_stat" || echo "offline" > "$TDIR/.s24_desk_stat") &
+    (ping -c 1 -W 1 "$LAP_IP" >/dev/null 2>&1 && echo "online" > "$TDIR/.s24_lap_stat" || echo "offline" > "$TDIR/.s24_lap_stat") &
+    wait
+
+    [ "$(cat "$TDIR/.s24_desk_stat" 2>/dev/null)" = "online" ] && DESK_STAT="${C_GREEN}Online${C_RESET}" || DESK_STAT="${C_RED}Offline${C_RESET}"
+    [ "$(cat "$TDIR/.s24_lap_stat" 2>/dev/null)" = "online" ] && LAP_STAT="${C_GREEN}Online${C_RESET}" || LAP_STAT="${C_YELLOW}Offline${C_RESET}"
+    rm -f "$TDIR/.s24_desk_stat" "$TDIR/.s24_lap_stat" 2>/dev/null
+
+    # Battery
+    BAT_INFO=$(termux-battery-status 2>/dev/null | grep -E "percentage|plugged" | tr -d '", ' | paste -sd ' ' -)
+    BAT_PERCENT=$(echo "$BAT_INFO" | grep -o 'percentage:[0-9]*' | cut -d: -f2)
+    BAT_PLUGGED=$(echo "$BAT_INFO" | grep -o 'plugged:[A-Z_]*' | cut -d: -f2)
+
+    [ -n "$BAT_PERCENT" ] && BAT_STR="${BAT_PERCENT}%" || BAT_STR="N/A"
+    [ "$BAT_PLUGGED" != "UNPLUGGED" ] && [ -n "$BAT_PLUGGED" ] && BAT_STR="${BAT_STR} (⚡)"
+
+    echo -e "${C_CYAN}${C_BOLD}⚡ S24 MOBILE WORKSTATION${C_RESET} ${C_DIM}• Security Shield Active${C_RESET}"
+    echo -e " ${C_GREEN}● Battery:${C_RESET}  ${BAT_STR}   ${C_GREEN}● Desktop:${C_RESET} ${DESK_STAT}   ${C_GREEN}● Laptop:${C_RESET} ${LAP_STAT}"
+    echo -e " ${C_DIM}Type ${C_BOLD}'menu'${C_RESET}${C_DIM} or ${C_BOLD}'?'${C_RESET}${C_DIM} for commands, or jump straight into ${C_BOLD}'agy'${C_RESET}${C_DIM} or ${C_BOLD}'jev'${C_RESET}."
+    echo ""
+fi
+
+# ── Aliases & Shortcuts ──
+alias '?'='menu'
+alias help='menu'
+
+# Security Helpers
+alias lock-termux="rm -f \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && exit"
+alias reset-pin="rm -f ~/.termux_pin_hash \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && echo 'PIN reset. Restart Termux or run reload to set a new PIN.'"
+
+# Jev Gateway
+alias jev="desk_ssh /home/jpi/.local/bin/jev-chat"
+alias jev-dash="xdg-open 'http://$DESK_IP:8085/dashboard' 2>/dev/null || termux-open-url 'http://$DESK_IP:8085/dashboard'"
+alias desk-logs="desk_ssh tail -f /home/jpi/.local/share/obsidian-ai-router/server.log"
+
+# Desktop AI Agents
+alias agy="desk_ssh /home/jpi/ap"
+alias desk-agy="agy"
+alias desk="agy"
+alias desk-hermes="desk_ssh hermes chat"
+alias desk-claude="desk_ssh /home/jpi/.local/bin/claude-phone"
+alias desk-aider="desk_ssh /home/jpi/.local/bin/aider-phone"
+alias sync-graphify="desk_ssh /home/jpi/.local/bin/sync-projects-graphify"
+
+# Desktop System Remote Controls
+alias desk-top="desk_ssh /home/jpi/.local/bin/desk-status"
+alias desk-gpu="ssh $SSH_OPTS jpi@$DESK_IP 'nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader'"
+alias desk-lock="ssh $SSH_OPTS jpi@$DESK_IP loginctl lock-session && echo '🖥️ Desktop screen locked.'"
+alias desk-shell="desk_ssh"
+
+# Laptop Shortcuts
+alias lap-agy="ssh $SSH_OPTS -t jpi@$LAP_IP /home/jpi/ap"
+alias lap="lap-agy"
+alias lap-shell="ssh $SSH_OPTS -t jpi@$LAP_IP"
+
+# Config Sync & Termux Setup
+alias sync-down="mkdir -p \${TMPDIR:-\$HOME/.cache} && date +%s > \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && scp $SSH_OPTS jpi@$DESK_IP:~/termux_bashrc ~/.bashrc && source ~/.bashrc && echo 'Config updated from desktop!'"
+alias sync-up="scp $SSH_OPTS ~/.bashrc jpi@$DESK_IP:~/termux_bashrc && echo 'Config pushed to desktop!'"
+alias setup-keys="mkdir -p ~/.termux && scp $SSH_OPTS jpi@$DESK_IP:~/termux_properties ~/.termux/termux.properties && termux-reload-settings && echo 'Touch keys updated!'"
+
+# Mobile Navigation & Maintenance
+alias ..="cd .."
+alias ...="cd ../.."
+alias ~="cd ~"
+alias storage="cd ~/storage/shared"
+alias l="ls -la"
+alias ll="ls -lh"
+alias update="pkg update && pkg upgrade -y && pkg autoclean"
+alias reload="mkdir -p \${TMPDIR:-\$HOME/.cache} && date +%s > \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && source ~/.bashrc"
+alias edit="nano ~/.bashrc"
