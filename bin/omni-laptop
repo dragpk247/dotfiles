@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI LAPTOP — Dedicated Arch Linux Laptop Interface
+# ==============================================================================
+
+# Source Core
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
+  source "$SCRIPT_DIR/omni-core.sh"
+elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
+  source "$HOME/.local/bin/omni-core.sh"
+elif [ -f "$HOME/dotfiles/bin/omni-core.sh" ]; then
+  source "$HOME/dotfiles/bin/omni-core.sh"
+fi
+
+while true; do
+  d_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$DESKTOP_IP" && d_stat="${C_GREEN}Online${C_RESET}"
+  p_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}Online${C_RESET}"
+
+  omni_render_header "Arch Laptop ($(hostname))" "│ Desktop: $d_stat │ Phone: $p_stat"
+
+  echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES (RTX 5070 Ti)${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Remote Antigravity     (Desktop 'ai' session)"
+  echo -e "  ${C_CYAN}[2]${C_RESET} 🟣 Remote Claude Code     (Desktop 'claude' session)"
+  echo -e "  ${C_CYAN}[3]${C_RESET} 💻 Remote Aider           (Desktop 'aider' session)"
+  echo -e "  ${C_CYAN}[5]${C_RESET} ⚡ Remote Jev Chat        (Inference router)"
+  echo -e "  ${C_CYAN}[6]${C_RESET} 🖥️  Moonlight Stream Fullscreen"
+  echo -e "  ${C_CYAN}[7]${C_RESET} 🖥️  Moonlight Stream Windowed"
+  echo -e "  ${C_CYAN}[8]${C_RESET} 💻 Desktop SSH Terminal Session"
+  echo ""
+  echo -e "${C_MAGENTA}${C_BOLD}  📱 S24 MOBILE PHONE (Termux & Mirror)${C_RESET}"
+  echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell"
+  echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror (scrcpy)"
+  echo ""
+  echo -e "${C_YELLOW}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
+  echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Desktop Health Monitor (CPU, RAM, GPU)"
+  echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 Desktop GPU Monitor"
+  echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
+  echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Git Pull Dotfiles"
+  echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
+  echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
+  echo ""
+  read -r -p "Select option: " choice
+
+  case "$choice" in
+    1) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/ap" ;;
+    2) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/claude-phone" ;;
+    3) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/aider-phone" ;;
+    5) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/jev-chat" ;;
+    6) moonlight stream "$DESKTOP_IP" "Desktop" ;;
+    7) moonlight stream --display-mode windowed "$DESKTOP_IP" "Desktop" ;;
+    8) ssh -t jpi@$DESKTOP_IP ;;
+    9) ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" ;;
+    0) 
+      adb connect "${PHONE_IP}:5555" 2>/dev/null || true
+      scrcpy --stay-awake --turn-screen-off || scrcpy
+      ;;
+    t|T) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/desk-status" ;;
+    u|U) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
+    k|K) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
+    y|Y) cd "$HOME/dotfiles" && git pull --rebase origin main && echo -e "${C_GREEN}[✓] Dotfiles updated!${C_RESET}" ;;
+    s|S) exit 0 ;;
+    e|E|q|Q|0) exit 0 ;;
+    *) echo "Invalid option." ; sleep 0.8 ;;
+  esac
+  echo ""
+  read -rp "Press Enter to continue..." _
+done
