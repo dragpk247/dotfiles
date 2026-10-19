@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI FZF — Interactive Fuzzy Action Launcher
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo -e "${C_YELLOW}[!] fzf is not installed. Falling back to regular menu.${C_RESET}"
+  exec "$SCRIPT_DIR/omni"
+fi
+
+CURRENT_DEV=$(omni_detect_device)
+
+declare -A ACTIONS
+
+case "$CURRENT_DEV" in
+  phone)
+    ACTIONS["[1] 🤖 Ask Copilot (Desktop GPU / Fallback)"]="omni ask"
+    ACTIONS["[2] 🎙️ Voice Assistant (Speak Prompt)"]="omni voice"
+    ACTIONS["[3] 📋 Send Clipboard to AI (clip-ask)"]="omni clip-ask"
+    ACTIONS["[4] ⚡ Run Clipboard Command (clip-run)"]="omni clip-run"
+    ACTIONS["[5] 📋 Cross-Device Clipboard Sync"]="omni clip"
+    ACTIONS["[6] 📁 3-Way File Send (Desktop/Laptop)"]="omni send"
+    ACTIONS["[7] 🛡️ Check Battery Sentinel (guard)"]="omni guard"
+    ACTIONS["[8] 🔔 Toggle Background Wake-Lock"]="omni wakelock"
+    ACTIONS["[9] 🚀 Connect Desktop Antigravity (agy)"]="omni agy"
+    ACTIONS["[10] 🟣 Connect Desktop Claude Code"]="omni claude"
+    ACTIONS["[11] 💻 Connect Desktop Aider Pair Programmer"]="omni aider"
+    ACTIONS["[12] ⚡ Connect Desktop Jev Router Chat"]="omni jev"
+    ACTIONS["[13] 📊 View Desktop Health Monitor (top)"]="omni top"
+    ACTIONS["[14] 🎮 View Desktop RTX 5070 Ti GPU"]="omni gpu"
+    ACTIONS["[15] 🔒 Lock Desktop Screen"]="omni lock"
+    ACTIONS["[16] 💻 SSH Shell into Arch Laptop"]="omni laptop"
+    ACTIONS["[17] 🔄 Pull Config Updates (sync-down)"]="omni sync"
+    ;;
+  laptop)
+    ACTIONS["[1] 🖥️ Moonlight Stream Fullscreen"]="omni stream"
+    ACTIONS["[2] 🖥️ Moonlight Stream Windowed"]="omni stream-win"
+    ACTIONS["[3] 🤖 Remote Desktop Antigravity (agy)"]="omni agy"
+    ACTIONS["[4] 🟣 Remote Desktop Claude Code"]="omni claude"
+    ACTIONS["[5] 💻 Remote Desktop Aider Programmer"]="omni aider"
+    ACTIONS["[6] ⚡ Remote Desktop Jev Router"]="omni jev"
+    ACTIONS["[7] 💻 Desktop SSH Terminal Session"]="omni desk-ssh"
+    ACTIONS["[8] 📱 Phone Termux SSH Shell"]="omni phone"
+    ACTIONS["[9] 📱 Phone Screen Mirror (scrcpy)"]="omni mirror"
+    ACTIONS["[10] 📁 3-Way File Send (Desktop/Phone)"]="omni send"
+    ACTIONS["[11] 📋 Cross-Device Clipboard Sync"]="omni clip"
+    ACTIONS["[12] 📊 View Desktop System Health"]="omni top"
+    ACTIONS["[13] 🎮 View Desktop RTX 5070 Ti GPU"]="omni gpu"
+    ACTIONS["[14] 🔒 Lock Desktop Screen"]="omni lock"
+    ACTIONS["[15] 🔄 Git Pull Dotfiles"]="omni sync"
+    ;;
+  desktop)
+    ACTIONS["[1] 🤖 Local Antigravity (agy tmux)"]="omni agy"
+    ACTIONS["[2] 🟣 Local Claude Code (claude tmux)"]="omni claude"
+    ACTIONS["[3] 💻 Local Aider Programmer (aider tmux)"]="omni aider"
+    ACTIONS["[4] 🕊️ Local Hermes Agent"]="omni hermes"
+    ACTIONS["[5] ⚡ Local Jev Router Chat"]="omni jev"
+    ACTIONS["[6] 📱 Phone Termux SSH Shell"]="omni phone"
+    ACTIONS["[7] 📱 Phone Screen Mirror (scrcpy)"]="omni mirror"
+    ACTIONS["[8] 💻 SSH Shell into Arch Laptop"]="omni laptop"
+    ACTIONS["[9] 📁 3-Way File Send (Phone/Laptop)"]="omni send"
+    ACTIONS["[10] 📋 Cross-Device Clipboard Sync"]="omni clip"
+    ACTIONS["[11] 🔔 Send Push Notification to S24"]="omni notify"
+    ACTIONS["[12] 📊 System Health Monitor (htop)"]="omni top"
+    ACTIONS["[13] 🎮 NVIDIA RTX 5070 Ti Telemetry"]="omni gpu"
+    ACTIONS["[14] 🔒 Lock Desktop Screen"]="omni lock"
+    ACTIONS["[15] 📤 Push Updates to Phone"]="omni sync"
+    ;;
+esac
+
+CHOICE=$(printf "%s\n" "${!ACTIONS[@]}" | sort -V | fzf --prompt="OMNI ($CURRENT_DEV) ❯ " --height=40% --layout=reverse --border)
+
+if [ -n "$CHOICE" ]; then
+  CMD="${ACTIONS[$CHOICE]}"
+  echo -e "${C_CYAN}==> Executing: $CMD${C_RESET}"
+  eval "$CMD"
+fi

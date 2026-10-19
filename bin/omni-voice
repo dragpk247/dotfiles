@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI VOICE — Interactive Voice-to-AI Assistant for S24 Phone
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+if [ "$CURRENT_DEV" != "phone" ]; then
+  echo -e "${C_RED}[!] Voice assistant is designed for Android Termux with microphone access.${C_RESET}"
+  exit 1
+fi
+
+echo -e "${C_CYAN}🎙️  Listening... Speak your prompt now into your S24 microphone.${C_RESET}"
+QUERY=$(termux-speech-to-text 2>/dev/null || true)
+
+if [ -z "$QUERY" ]; then
+  echo -e "${C_YELLOW}[!] No voice input detected.${C_RESET}"
+  exit 0
+fi
+
+echo -e "\n${C_BOLD}You said:${C_RESET} \"$QUERY\""
+echo -e "${C_CYAN}[*] Processing with Copilot...${C_RESET}\n"
+
+# Run through ask
+if [ -f "$HOME/bin/ask" ]; then
+  RESPONSE=$("$HOME/bin/ask" "$QUERY" 2>&1)
+  echo "$RESPONSE"
+  
+  # Read aloud summary if short enough
+  CLEAN_TEXT=$(echo "$RESPONSE" | sed 's/\x1b\[[0-9;]*m//g' | head -n 4)
+  if [ -n "$CLEAN_TEXT" ]; then
+    echo -n "$CLEAN_TEXT" | termux-tts-speak 2>/dev/null || true
+  fi
+else
+  echo -e "${C_RED}[!] ~/bin/ask not found.${C_RESET}"
+fi

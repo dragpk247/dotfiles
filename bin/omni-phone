@@ -28,8 +28,10 @@ while true; do
 
   echo -e "${C_CYAN}${C_BOLD}  🧠 SMART COPILOT & CLIPBOARD (Phone-Native)${C_RESET}"
   echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Ask Copilot           (Desktop GPU / Local fallback)"
+  echo -e "  ${C_CYAN}[v]${C_RESET} 🎙️  Voice Assistant       (Speak prompt -> AI audio reply)"
   echo -e "  ${C_CYAN}[2]${C_RESET} 📋 Send Clipboard to AI   (clip-ask)"
   echo -e "  ${C_CYAN}[3]${C_RESET} ⚡ Run Clipboard Command  (clip-run)"
+  echo -e "  ${C_CYAN}[c]${C_RESET} 📋 Cross-Device Clipboard (Push/Pull to Desktop/Laptop)"
   echo -e "  ${C_CYAN}[4]${C_RESET} 🛡️  Check Sentinel Guard   (guard)"
   echo -e "  ${C_CYAN}[w]${C_RESET} 🔔 Toggle Wake Lock      (Clear/keep notification)"
   echo ""
@@ -48,7 +50,8 @@ while true; do
   echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER${C_RESET}"
   echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Desktop or Laptop (omni send)"
   echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  🔄 SYSTEM & MAINTENANCE${C_RESET}"
+  echo -e "${C_MAGENTA}${C_BOLD}  🔄 SYSTEM & NAVIGATION${C_RESET}"
+  echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
   echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Sync Updates from Desktop (sync-down)"
   echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
   echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
@@ -57,10 +60,13 @@ while true; do
 
   case "$choice" in
     1) read -r -p "Prompt: " p; [ -n "$p" ] && ~/bin/ask "$p" ;;
+    v|V) "$SCRIPT_DIR/omni-voice" ;;
     2) ~/bin/clip-ask ;;
     3) ~/bin/clip-run ;;
+    c|C) "$SCRIPT_DIR/omni-clip" ;;
     4) ~/bin/smart-guard.sh && echo -e "${C_GREEN}🛡️ Battery & Thermals: SAFE${C_RESET}" ;;
     w|W) toggle_wakelock ;;
+    z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     5) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
     6) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
     7) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;

@@ -19,6 +19,9 @@ case "${1:-}" in
   --desktop|desktop-ui)
     exec "$SCRIPT_DIR/omni-desktop"
     ;;
+  -f|--fzf|fzf)
+    exec "$SCRIPT_DIR/omni-fzf"
+    ;;
   setup|--setup)
     omni_run_setup
     exit 0
@@ -26,6 +29,24 @@ case "${1:-}" in
   send)
     shift
     exec "$SCRIPT_DIR/omni-send" "$@"
+    ;;
+  clip)
+    shift
+    exec "$SCRIPT_DIR/omni-clip" "$@"
+    ;;
+  voice)
+    shift
+    exec "$SCRIPT_DIR/omni-voice" "$@"
+    ;;
+  notify)
+    shift
+    exec "$SCRIPT_DIR/omni-notify" "$@"
+    ;;
+  stream)
+    moonlight stream "$DESKTOP_IP" "Desktop"
+    ;;
+  stream-win)
+    moonlight stream --display-mode windowed "$DESKTOP_IP" "Desktop"
     ;;
   ""|menu)
     case "$CURRENT_DEVICE" in
@@ -36,10 +57,17 @@ case "${1:-}" in
     esac
     ;;
   help|-h|--help)
-    echo "OMNI — Intelligent Multi-Device Command Center"
-    echo "Device detected: $CURRENT_DEVICE"
-    echo "Usage: omni [menu|send|setup|--phone|--laptop|--desktop]"
-    echo "       omni <command> (e.g. omni send file.txt, omni setup)"
+    echo "OMNI — Intelligent Multi-Device Command Center (Current: $CURRENT_DEVICE)"
+    echo "Usage: omni [menu|send|clip|voice|notify|fzf|setup|--phone|--laptop|--desktop]"
+    echo ""
+    echo "Commands:"
+    echo "  omni send <file>      3-Way file transfer (Desktop <-> Laptop <-> S24)"
+    echo "  omni clip [push|pull] Universal clipboard sync across all devices"
+    echo "  omni voice            Voice-to-AI Assistant with audio feedback (S24)"
+    echo "  omni notify <msg>     Push alert across desktop and S24 phone notification shade"
+    echo "  omni -f / omni fzf    Interactive real-time fuzzy search action launcher"
+    echo "  omni ask <query>      Direct mobile copilot query"
+    echo "  omni top / gpu / lock Desktop telemetry and screen lock"
     exit 0
     ;;
   ask)
@@ -58,6 +86,66 @@ case "${1:-}" in
     ;;
   guard)
     [ -f "$HOME/bin/smart-guard.sh" ] && "$HOME/bin/smart-guard.sh" && echo "🛡️ Battery & Thermals: SAFE"
+    ;;
+  top|desk-top)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status"
+    fi
+    ;;
+  gpu|desk-gpu)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader
+    else
+      ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader"
+    fi
+    ;;
+  lock|desk-lock)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true
+    else
+      ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true"
+    fi
+    ;;
+  agy)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/ap" ] && "$HOME/ap" || agy
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
+    fi
+    ;;
+  claude)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone"
+    fi
+    ;;
+  aider)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone"
+    fi
+    ;;
+  jev)
+    shift
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/jev-chat" ] && "$HOME/.local/bin/jev-chat" "$@"
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat '$*'"
+    fi
+    ;;
+  phone)
+    ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}"
+    ;;
+  laptop)
+    ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}"
+    ;;
+  mirror)
+    adb connect "${PHONE_IP}:5555" 2>/dev/null || true
+    scrcpy --stay-awake --turn-screen-off || scrcpy
     ;;
   *)
     case "$CURRENT_DEVICE" in

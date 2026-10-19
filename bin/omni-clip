@@ -1,0 +1,166 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI CLIP — Universal 3-Way Cross-Device Clipboard Engine
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+export WAYLAND_DISPLAY="${WAYLAND_DISPLAY:-wayland-1}"
+export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+
+# Local clipboard getters and setters
+get_local_clip() {
+  case "$CURRENT_DEV" in
+    phone)
+      termux-clipboard-get 2>/dev/null || true
+      ;;
+    desktop|laptop)
+      wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null || true
+      ;;
+  esac
+}
+
+set_local_clip() {
+  local content="$1"
+  case "$CURRENT_DEV" in
+    phone)
+      echo -n "$content" | termux-clipboard-set 2>/dev/null || true
+      ;;
+    desktop|laptop)
+      nohup wl-copy "$content" >/dev/null 2>&1 & disown 2>/dev/null || true
+      ;;
+  esac
+}
+
+push_to_peer() {
+  local target="$1"
+  local content="$2"
+  if [ -z "$content" ]; then
+    echo -e "${C_YELLOW}[!] Clipboard is empty. Nothing to push.${C_RESET}"
+    return 1
+  fi
+
+  case "$target" in
+    phone)
+      if omni_is_online "$PHONE_IP"; then
+        echo -n "$content" | ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-clipboard-set" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Clipboard pushed to S24 Phone!${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Phone is offline.${C_RESET}"
+      fi
+      ;;
+    desktop)
+      if omni_is_online "$DESKTOP_IP"; then
+        echo -n "$content" | ssh "${DESKTOP_USER}@${DESKTOP_IP}" "wl-copy 2>/dev/null || xclip -selection clipboard" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Clipboard pushed to Desktop!${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Desktop is offline.${C_RESET}"
+      fi
+      ;;
+    laptop)
+      if omni_is_online "$LAPTOP_IP"; then
+        echo -n "$content" | ssh "${LAPTOP_USER}@${LAPTOP_IP}" "wl-copy 2>/dev/null || xclip -selection clipboard" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Clipboard pushed to Laptop!${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Laptop is offline.${C_RESET}"
+      fi
+      ;;
+  esac
+}
+
+pull_from_peer() {
+  local target="$1"
+  local remote_content=""
+
+  case "$target" in
+    phone)
+      if omni_is_online "$PHONE_IP"; then
+        remote_content=$(ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-clipboard-get 2>/dev/null" || true)
+      fi
+      ;;
+    desktop)
+      if omni_is_online "$DESKTOP_IP"; then
+        remote_content=$(ssh "${DESKTOP_USER}@${DESKTOP_IP}" "wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null" || true)
+      fi
+      ;;
+    laptop)
+      if omni_is_online "$LAPTOP_IP"; then
+        remote_content=$(ssh "${LAPTOP_USER}@${LAPTOP_IP}" "wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null" || true)
+      fi
+      ;;
+  esac
+
+  if [ -n "$remote_content" ]; then
+    set_local_clip "$remote_content"
+    echo -e "${C_GREEN}[✓] Pulled clipboard from $target into local clipboard!${C_RESET}"
+    echo -e "${C_DIM}Preview: $(echo "$remote_content" | head -n 3)${C_RESET}"
+  else
+    echo -e "${C_RED}[!] Could not pull clipboard from $target (offline or empty).${C_RESET}"
+  fi
+}
+
+ACTION="${1:-}"
+TARGET="${2:-}"
+
+case "$ACTION" in
+  get)
+    get_local_clip
+    ;;
+  set)
+    shift
+    set_local_clip "$*"
+    ;;
+  push)
+    clip_data=$(get_local_clip)
+    if [ -n "$TARGET" ]; then
+      push_to_peer "$TARGET" "$clip_data"
+    else
+      case "$CURRENT_DEV" in
+        desktop)
+          push_to_peer "phone" "$clip_data"
+          push_to_peer "laptop" "$clip_data"
+          ;;
+        laptop)
+          push_to_peer "desktop" "$clip_data"
+          push_to_peer "phone" "$clip_data"
+          ;;
+        phone)
+          push_to_peer "desktop" "$clip_data"
+          push_to_peer "laptop" "$clip_data"
+          ;;
+      esac
+    fi
+    ;;
+  pull)
+    if [ -n "$TARGET" ]; then
+      pull_from_peer "$TARGET"
+    else
+      case "$CURRENT_DEV" in
+        desktop) pull_from_peer "phone" ;;
+        laptop) pull_from_peer "desktop" ;;
+        phone) pull_from_peer "desktop" ;;
+      esac
+    fi
+    ;;
+  *)
+    echo -e "${C_CYAN}📋 OMNI Universal Clipboard${C_RESET}"
+    echo -e "  ${C_GREEN}[1]${C_RESET} 📤 Broadcast local clipboard to all peers"
+    echo -e "  ${C_GREEN}[2]${C_RESET} 📥 Pull clipboard from Desktop"
+    echo -e "  ${C_GREEN}[3]${C_RESET} 📥 Pull clipboard from Phone"
+    echo -e "  ${C_GREEN}[4]${C_RESET} 📥 Pull clipboard from Laptop"
+    read -r -p "Select action [1-4]: " clip_opt
+    clip_val=$(get_local_clip)
+    case "$clip_opt" in
+      1)
+        push_to_peer "desktop" "$clip_val"
+        push_to_peer "phone" "$clip_val"
+        push_to_peer "laptop" "$clip_val"
+        ;;
+      2) pull_from_peer "desktop" ;;
+      3) pull_from_peer "phone" ;;
+      4) pull_from_peer "laptop" ;;
+    esac
+    ;;
+esac

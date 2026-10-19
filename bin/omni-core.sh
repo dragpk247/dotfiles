@@ -166,3 +166,14 @@ BANNER
   echo -e " ${C_BOLD}OMNI System Control${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
   echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
 }
+
+# Auto-detect Wayland socket if unset
+if [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  export XDG_RUNTIME_DIR="${XDG_RUNTIME_DIR:-/run/user/$(id -u)}"
+  for w in "$XDG_RUNTIME_DIR"/wayland-*; do
+    if [ -S "$w" ]; then
+      export WAYLAND_DISPLAY=$(basename "$w")
+      break
+    fi
+  done
+fi

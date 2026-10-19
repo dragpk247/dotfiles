@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI NOTIFY — Cross-Device Push Notification Relay
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+MSG="${1:-Task finished!}"
+TITLE="${2:-OMNI Alert}"
+TARGET="${3:-all}"
+
+CURRENT_DEV=$(omni_detect_device)
+
+# 1. Local Notification
+case "$CURRENT_DEV" in
+  desktop|laptop)
+    notify-send "$TITLE" "$MSG" 2>/dev/null || true
+    ;;
+  phone)
+    termux-notification --title "$TITLE" --content "$MSG" 2>/dev/null || true
+    ;;
+esac
+
+# 2. Remote Notification to Phone (if run from Desktop or Laptop)
+if [ "$CURRENT_DEV" != "phone" ] && omni_is_online "$PHONE_IP"; then
+  ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-notification --title '$TITLE' --content '$MSG' --vibrate 500" 2>/dev/null || true
+  echo -e "${C_GREEN}[✓] Notification pushed to S24 Phone!${C_RESET}"
+fi
+
+# 3. Remote Notification to Desktop (if run from Phone or Laptop)
+if [ "$CURRENT_DEV" != "desktop" ] && omni_is_online "$DESKTOP_IP"; then
+  ssh "${DESKTOP_USER}@${DESKTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send '$TITLE' '$MSG'" 2>/dev/null || true
+fi

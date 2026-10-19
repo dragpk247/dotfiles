@@ -27,13 +27,16 @@ while true; do
   echo -e "${C_YELLOW}${C_BOLD}  💻 LAPTOP ($LAPTOP_IP)${C_RESET}"
   echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop SSH Shell"
   echo ""
-  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER${C_RESET}"
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE & DATA SHARING${C_RESET}"
   echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Laptop or Phone (omni send)"
+  echo -e "  ${C_CYAN}[c]${C_RESET} 📋 Cross-Device Clipboard Sync   (omni clip)"
+  echo -e "  ${C_CYAN}[n]${C_RESET} 🔔 Push Notification to S24     (omni notify)"
   echo ""
   echo -e "${C_GREEN}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
   echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Local System Monitor   (htop / desk-top)"
   echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 NVIDIA GPU Status"
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
+  echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
   echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
   echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
   echo ""
@@ -54,6 +57,12 @@ while true; do
       read -e -p "Enter path to file: " fpath
       [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
+    c|C) "$SCRIPT_DIR/omni-clip" ;;
+    n|N)
+      read -r -p "Enter notification message: " nmsg
+      [ -n "$nmsg" ] && "$SCRIPT_DIR/omni-notify" "$nmsg"
+      ;;
+    z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     y|Y)
       echo -e "${C_CYAN}[*] Pushing phone-hub updates to phone...${C_RESET}"
       scp -P "$PHONE_PORT" -r "$SCRIPT_DIR"/* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
