@@ -52,6 +52,9 @@ while true; do
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
   echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop Terminal (SSH)"
   echo ""
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER (Desktop <-> Laptop <-> S24)${C_RESET}"
+  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Desktop or Laptop (omni send)"
+  echo ""
   echo -e "${C_MAGENTA}${C_BOLD}  🔄 SYSTEM & MAINTENANCE${C_RESET}"
   echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Sync Updates from Desktop (sync-down)"
   echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
@@ -73,6 +76,10 @@ while true; do
     u|U) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
     k|K) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
     l|L) ssh -o ConnectTimeout=3 -t jpi@$LAPTOP_IP ;;
+    f|F)
+      read -e -p "Enter path to file: " fpath
+      [ -n "$fpath" ] && ~/bin/omni-send "$fpath"
+      ;;
     y|Y) sync-down ;;
     s|S) exit 0 ;;
     e|E|q|Q|0) exit 0 ;;

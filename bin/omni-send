@@ -1,0 +1,104 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI SEND — Universal 3-Way File & Folder Transfer Engine
+#  Transfers seamlessly between: Desktop <-> Laptop <-> S24 Phone
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
+  source "$SCRIPT_DIR/omni-core.sh"
+elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
+  source "$HOME/.local/bin/omni-core.sh"
+elif [ -f "$HOME/bin/omni-core.sh" ]; then
+  source "$HOME/bin/omni-core.sh"
+fi
+
+ITEM="${1:-}"
+if [ -z "$ITEM" ] || [ "$ITEM" = "-h" ] || [ "$ITEM" = "--help" ]; then
+  echo -e "${C_CYAN}Usage:${C_RESET} omni send <file_or_dir> [target]"
+  echo "Targets: --phone, --laptop, --desktop (or leave empty for interactive choice)"
+  exit 0
+fi
+
+if [ ! -e "$ITEM" ]; then
+  echo -e "${C_RED}[!] Error: File or directory '$ITEM' not found.${C_RESET}"
+  exit 1
+fi
+
+BASENAME=$(basename "$ITEM")
+CURRENT_DEV=$(omni_detect_device)
+TARGET="${2:-}"
+
+# Interactive Destination Prompt if not specified
+if [ -z "$TARGET" ]; then
+  echo -e "${C_CYAN}Sending '${BASENAME}'... Choose destination:${C_RESET}"
+  case "$CURRENT_DEV" in
+    desktop)
+      echo -e "  ${C_GREEN}[1]${C_RESET} 📱 S24 Phone (/sdcard/Download/)"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Arch Laptop (~/Downloads/)"
+      read -r -p "Target [1-2]: " dest_choice
+      [ "$dest_choice" = "1" ] && TARGET="phone"
+      [ "$dest_choice" = "2" ] && TARGET="laptop"
+      ;;
+    laptop)
+      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (~/Downloads/)"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 📱 S24 Phone (/sdcard/Download/)"
+      read -r -p "Target [1-2]: " dest_choice
+      [ "$dest_choice" = "1" ] && TARGET="desktop"
+      [ "$dest_choice" = "2" ] && TARGET="phone"
+      ;;
+    phone)
+      echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (~/Downloads/)"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Arch Laptop (~/Downloads/)"
+      read -r -p "Target [1-2]: " dest_choice
+      [ "$dest_choice" = "1" ] && TARGET="desktop"
+      [ "$dest_choice" = "2" ] && TARGET="laptop"
+      ;;
+  esac
+fi
+
+# Normalize Target
+case "$TARGET" in
+  --phone|phone|s24|mobile) DEST="phone" ;;
+  --laptop|laptop|lap) DEST="laptop" ;;
+  --desktop|desktop|desk) DEST="desktop" ;;
+  *) echo -e "${C_RED}[!] Invalid destination: $TARGET${C_RESET}"; exit 1 ;;
+esac
+
+echo -e "\n${C_CYAN}[*] Transferring '$BASENAME' to $DEST...${C_RESET}"
+
+case "$DEST" in
+  phone)
+    if ! omni_is_online "$PHONE_IP"; then
+      echo -e "${C_RED}[!] S24 Phone is unreachable on Tailscale ($PHONE_IP).${C_RESET}"
+      exit 1
+    fi
+    scp -P "$PHONE_PORT" -r "$ITEM" "${PHONE_USER}@${PHONE_IP}:~/storage/downloads/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to S24 Download folder!${C_RESET}"
+      # Send notification to Android
+      ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-notification --title 'OMNI File Received' --content '$BASENAME saved to Downloads' 2>/dev/null" || true
+    }
+    ;;
+  desktop)
+    if ! omni_is_online "$DESKTOP_IP"; then
+      echo -e "${C_RED}[!] Desktop is unreachable on Tailscale ($DESKTOP_IP).${C_RESET}"
+      exit 1
+    fi
+    scp -r "$ITEM" "jpi@${DESKTOP_IP}:~/Downloads/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Desktop ~/Downloads/!${C_RESET}"
+      # Send notification to Desktop
+      ssh "jpi@${DESKTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to ~/Downloads' 2>/dev/null" || true
+    }
+    ;;
+  laptop)
+    if ! omni_is_online "$LAPTOP_IP"; then
+      echo -e "${C_RED}[!] Laptop is unreachable on Tailscale ($LAPTOP_IP).${C_RESET}"
+      exit 1
+    fi
+    scp -r "$ITEM" "jpi@${LAPTOP_IP}:~/Downloads/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Laptop ~/Downloads/!${C_RESET}"
+      # Send notification to Laptop
+      ssh "jpi@${LAPTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to ~/Downloads' 2>/dev/null" || true
+    }
+    ;;
+esac

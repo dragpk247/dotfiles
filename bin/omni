@@ -39,6 +39,10 @@ case "${1:-}" in
     echo "       omni <direct-command> (e.g. omni ask, omni top, omni gpu, omni lock)"
     exit 0
     ;;
+  send)
+    shift
+    exec "$SCRIPT_DIR/omni-send" "$@"
+    ;;
   # Direct shortcuts
   ask)
     shift

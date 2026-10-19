@@ -33,6 +33,8 @@ while true; do
   echo ""
   echo -e "${C_YELLOW}${C_BOLD}  💻 LAPTOP (100.72.213.23)${C_RESET}"
   echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop SSH Shell"
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER (Desktop <-> Laptop <-> S24)${C_RESET}"
+  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Laptop or S24 Phone (omni send)"
   echo ""
   echo -e "${C_GREEN}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
   echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Local System Monitor   (htop / desk-top)"
@@ -53,6 +55,10 @@ while true; do
     0) 
       adb connect "${PHONE_IP}:5555" 2>/dev/null || true
       scrcpy --stay-awake --turn-screen-off || scrcpy
+      ;;
+    f|F)
+      read -e -p "Enter path to file: " fpath
+      [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     y|Y)
       echo -e "${C_CYAN}[*] Pushing phone-hub updates to S24...${C_RESET}"

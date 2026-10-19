@@ -32,6 +32,9 @@ while true; do
   echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell"
   echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror (scrcpy)"
   echo ""
+  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER (Desktop <-> Laptop <-> S24)${C_RESET}"
+  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Desktop or S24 Phone (omni send)"
+  echo ""
   echo -e "${C_YELLOW}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
   echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Desktop Health Monitor (CPU, RAM, GPU)"
   echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 Desktop GPU Monitor"
@@ -54,6 +57,10 @@ while true; do
     0) 
       adb connect "${PHONE_IP}:5555" 2>/dev/null || true
       scrcpy --stay-awake --turn-screen-off || scrcpy
+      ;;
+    f|F)
+      read -e -p "Enter path to file: " fpath
+      [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     t|T) ssh -o ConnectTimeout=3 -t jpi@$DESKTOP_IP "/home/jpi/.local/bin/desk-status" ;;
     u|U) ssh -o ConnectTimeout=3 jpi@$DESKTOP_IP "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
