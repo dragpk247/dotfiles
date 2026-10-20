@@ -37,12 +37,12 @@ while true; do
   echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 NVIDIA GPU Status"
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
   echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
-  echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
-  echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
+  echo -e "  ${C_DIM}[Enter / s / q]${C_RESET} 🐚 Shell / Exit"
   echo ""
-  read -r -p "Select option: " choice
+  read -r -p "Select option [Enter for Shell]: " choice
 
   case "$choice" in
+    ""|s|S|e|E|q|Q) exit 0 ;;
     1) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
     2) [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude ;;
     3) [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider ;;
@@ -72,8 +72,6 @@ while true; do
     t|T) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
     u|U) nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader ;;
     k|K) loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true ;;
-    s|S) exit 0 ;;
-    e|E|q|Q|0) exit 0 ;;
     *)
       if ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"

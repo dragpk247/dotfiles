@@ -53,12 +53,12 @@ while true; do
   echo -e "${C_MAGENTA}${C_BOLD}  🔄 SYSTEM & NAVIGATION${C_RESET}"
   echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
   echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Sync Updates from Desktop (sync-down)"
-  echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Drop to Local Shell"
-  echo -e "  ${C_RED}[e]${C_RESET} 🚪 Exit"
+  echo -e "  ${C_DIM}[Enter / s / q]${C_RESET} 🐚 Shell / Exit"
   echo ""
-  read -r -p "Select option: " choice
+  read -r -p "Select option [Enter for Shell]: " choice
 
   case "$choice" in
+    ""|s|S|e|E|q|Q) exit 0 ;;
     1) read -r -p "Prompt: " p; [ -n "$p" ] && ~/bin/ask "$p" ;;
     v|V) "$SCRIPT_DIR/omni-voice" ;;
     2) ~/bin/clip-ask ;;
@@ -80,8 +80,6 @@ while true; do
       [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     y|Y) sync-down ;;
-    s|S) exit 0 ;;
-    e|E|q|Q|0) exit 0 ;;
     *)
       if ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"
