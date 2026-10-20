@@ -178,3 +178,24 @@ if [ -z "${WAYLAND_DISPLAY:-}" ]; then
     fi
   done
 fi
+
+# ── Dynamic Shell Command Execution ──
+# Allows executing any command like whoami, ls, uname, pwd directly from menus or omni CLI
+omni_exec_custom() {
+  local input="$1"
+  if [ -z "$input" ]; then
+    return 1
+  fi
+
+  local cmd
+  cmd=$(echo "$input" | awk '{print $1}')
+
+  if command -v "$cmd" >/dev/null 2>&1 || [[ "$cmd" =~ ^(cd|export|alias|echo|source|\.)$ ]]; then
+    echo -e "\n${C_CYAN}─── Running: ${C_BOLD}$input${C_RESET}${C_CYAN} ───${C_RESET}"
+    eval "$input"
+    local ret=$?
+    echo -e "${C_CYAN}─── Exited with code $ret ───${C_RESET}"
+    return 0
+  fi
+  return 1
+}

@@ -148,6 +148,9 @@ case "${1:-}" in
     scrcpy --stay-awake --turn-screen-off || scrcpy
     ;;
   *)
+    if [ -n "${1:-}" ] && omni_exec_custom "$*"; then
+      exit 0
+    fi
     case "$CURRENT_DEVICE" in
       phone) exec "$SCRIPT_DIR/omni-phone" ;;
       laptop) exec "$SCRIPT_DIR/omni-laptop" ;;
