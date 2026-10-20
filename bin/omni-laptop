@@ -14,6 +14,7 @@ while true; do
 
   echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES${C_RESET}"
   echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Remote Antigravity     (Desktop 'ai' session)"
+  echo -e "  ${C_CYAN}[a]${C_RESET} 🚀 Local Antigravity      (Local 'ai' session)"
   echo -e "  ${C_CYAN}[2]${C_RESET} 🟣 Remote Claude Code     (Desktop 'claude' session)"
   echo -e "  ${C_CYAN}[3]${C_RESET} 💻 Remote Aider           (Desktop 'aider' session)"
   echo -e "  ${C_CYAN}[5]${C_RESET} ⚡ Remote Jev Chat        (Inference router)"
@@ -42,6 +43,7 @@ while true; do
 
   case "$choice" in
     1) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
+    a|A) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
     2) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
     3) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;
     5) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat" ;;

@@ -115,6 +115,9 @@ case "${1:-}" in
       ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
     fi
     ;;
+  local-agy)
+    [ -f "$HOME/ap" ] && "$HOME/ap" || agy
+    ;;
   claude)
     if [ "$CURRENT_DEVICE" = "desktop" ]; then
       [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude
