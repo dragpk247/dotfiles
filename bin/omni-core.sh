@@ -6,6 +6,7 @@
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omni"
 CONFIG_FILE="$CONFIG_DIR/config.env"
+export OMNI_VERSION="v1.2.0"
 
 # Colors
 export C_RESET="\033[0m"
@@ -163,7 +164,7 @@ omni_render_header() {
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
   echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
-  echo -e " ${C_BOLD}OMNI System Control${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
+  echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.2.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
   echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
 }
 
