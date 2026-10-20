@@ -12,14 +12,12 @@ C_BOLD="\033[1m"
 C_DIM="\033[2m"
 C_RESET="\033[0m"
 
-# Fast cached ping or quick check
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/omni"
 mkdir -p "$CACHE_DIR" 2>/dev/null
 
 PHONE_IP="100.118.50.88"
 LAPTOP_IP="100.72.213.23"
 
-# Read cache if fresh (< 30s)
 CACHE_FILE="$CACHE_DIR/status_cache"
 NOW=$(date +%s)
 p_stat="${C_GREEN}online${C_RESET}"
@@ -58,6 +56,6 @@ fi
 
 echo -e "${C_CYAN}${C_BOLD}  ___  __  __ _   _ ___${C_RESET}   ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.2.0${C_RESET}"
 echo -e "${C_CYAN}${C_BOLD} / _ \|  \/  | \ | |_ _|${C_RESET}  ${C_DIM}Host:${C_RESET} $(hostname) │ ${C_DIM}Phone:${C_RESET} $p_stat │ ${C_DIM}Laptop:${C_RESET} $l_stat"
-echo -e "${C_CYAN}${C_BOLD}| |_| | |  | | |\  || |${C_RESET}   Type ${C_BOLD}'m'${C_RESET} or ${C_BOLD}'menu'${C_RESET} for dashboard │ ${C_BOLD}'Enter'${C_RESET} in menu to exit"
+echo -e "${C_CYAN}${C_BOLD}| |_| | |  | | |\  || |${C_RESET}   Press ${C_BOLD}[Enter]${C_RESET} for banner │ Type ${C_BOLD}'menu'${C_RESET} or ${C_BOLD}'m'${C_RESET} for dashboard"
 echo -e "${C_CYAN}${C_BOLD} \___/|_|  |_|_| \_|___|${C_RESET}"
 echo ""
