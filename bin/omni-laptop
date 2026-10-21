@@ -90,8 +90,26 @@ while true; do
     2) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
     3) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;
     5) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat" ;;
-    6) moonlight stream "$DESKTOP_IP" "Desktop" ;;
-    7) moonlight stream --display-mode windowed "$DESKTOP_IP" "Desktop" ;;
+    6)
+      echo -e "${C_YELLOW}⚠️  Moonlight streams ~3-5 GB/hr (Remote Antigravity uses ~15 MB/hr).${C_RESET}"
+      read -rsn1 -p "Launch Antigravity instead to save data? [Y/n]: " ans
+      echo ""
+      if [[ "$ans" =~ ^[Nn]$ ]]; then
+        moonlight stream "$DESKTOP_IP" "Desktop"
+      else
+        ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
+      fi
+      ;;
+    7)
+      echo -e "${C_YELLOW}⚠️  Moonlight streams ~3-5 GB/hr (Remote Antigravity uses ~15 MB/hr).${C_RESET}"
+      read -rsn1 -p "Launch Antigravity instead to save data? [Y/n]: " ans
+      echo ""
+      if [[ "$ans" =~ ^[Nn]$ ]]; then
+        moonlight stream --display-mode windowed "$DESKTOP_IP" "Desktop"
+      else
+        ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
+      fi
+      ;;
     8) ssh -t "${DESKTOP_USER}@${DESKTOP_IP}" ;;
     9) ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" ;;
     0) 
