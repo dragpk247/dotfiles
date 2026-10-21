@@ -4,22 +4,13 @@
     "layout": {
       "center": [
         {
-          "id": "omarchy.keyboard-layout"
-        },
-        {
           "id": "omarchy.indicators"
         },
         {
-          "format": "dddd HH:mm",
+          "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "id": "omarchy.clock",
           "verticalFormat": "HH\n—\nmm"
-        },
-        {
-          "id": "omarchy.weather"
-        },
-        {
-          "id": "omarchy.system-update"
         }
       ],
       "left": [
@@ -28,6 +19,12 @@
         },
         {
           "id": "omarchy.workspaces"
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.keyboard-layout"
         }
       ],
       "right": [
@@ -87,7 +84,7 @@
       ]
     },
     "position": "top",
-    "transparent": true
+    "transparent": false
   },
   "cloneSourceRestores": [
     "jpi.menu"
