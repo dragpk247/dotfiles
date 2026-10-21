@@ -52,6 +52,9 @@ Panel {
   }
   property int currentRefreshRate: 60
   readonly property var refreshRatePresets: [60, 120, 240]
+  property string currentMode: "laptop"
+  readonly property var modePresets: ["laptop", "tent", "tablet", "portrait"]
+  readonly property var modeLabels: ["💻 Laptop", "⛺ Tent", "📱 Tablet", "🔄 Portrait"]
   property string currentIdleSleep: "4h"
   readonly property var idleSleepPresets: ["1h", "2h", "4h", "Never"]
   property string focusSection: "scale"
@@ -82,6 +85,7 @@ Panel {
     list.push("textsize")
     list.push("scale")
     list.push("refreshrate")
+    list.push("mode")
     list.push("idlesleep")
     if (displays.length > 1) list.push("monitors")
     return list
@@ -92,14 +96,15 @@ Panel {
     if (section === "textsize") return 0    // slider sentinel at -1, like brightness
     if (section === "scale") return scaleValues.length
     if (section === "refreshrate") return refreshRatePresets.length
+    if (section === "mode") return modePresets.length
     if (section === "idlesleep") return idleSleepPresets.length
     if (section === "monitors") return displays.length
     return 0
   }
 
   function sectionIsSingleRow(section) {
-    // brightness and text size are lone sliders; scale, refresh rate, and idle sleep presets sit horizontally.
-    return section === "brightness" || section === "textsize" || section === "scale" || section === "refreshrate" || section === "idlesleep"
+    // brightness and text size are lone sliders; scale, refresh rate, mode, and idle sleep presets sit horizontally.
+    return section === "brightness" || section === "textsize" || section === "scale" || section === "refreshrate" || section === "mode" || section === "idlesleep"
   }
 
   function sectionFirstIndex(section) {
@@ -167,6 +172,10 @@ Panel {
     }
     if (focusSection === "refreshrate" && selectedIndex >= 0 && selectedIndex < refreshRatePresets.length) {
       setRefreshRate(refreshRatePresets[selectedIndex])
+      return
+    }
+    if (focusSection === "mode" && selectedIndex >= 0 && selectedIndex < modePresets.length) {
+      setMode(modePresets[selectedIndex])
       return
     }
     if (focusSection === "idlesleep" && selectedIndex >= 0 && selectedIndex < idleSleepPresets.length) {
@@ -429,9 +438,34 @@ Panel {
         root.monitorScale = root.normalizeScale(String(lines[6] || "").trim())
         root.updateDisplays(String(lines[7] || "[]").trim())
         if (!getRateProc.running) getRateProc.running = true
+        if (!getModeProc.running) getModeProc.running = true
         if (!getIdleSleepProc.running) getIdleSleepProc.running = true
       }
     }
+  }
+
+  function setMode(val) {
+    root.currentMode = val
+    setModeProc.command = ["/home/jpi/.local/bin/asus-mode-set", String(val)]
+    if (!setModeProc.running) setModeProc.running = true
+  }
+
+  Process {
+    id: getModeProc
+    command: ["/home/jpi/.local/bin/asus-mode-get"]
+    stdout: StdioCollector {
+      waitForEnd: true
+      onStreamFinished: {
+        var val = String(text || "laptop").trim()
+        if (val !== "") root.currentMode = val
+      }
+    }
+  }
+
+  Process {
+    id: setModeProc
+    stdout: StdioCollector { waitForEnd: true }
+    onRunningChanged: if (!running) root.refresh()
   }
 
   function setIdleSleep(val) {
@@ -565,7 +599,7 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(680))
 
     PanelKeyCatcher {
       id: keyCatcher
@@ -598,7 +632,7 @@ Panel {
         Column {
           id: panelColumn
           width: scrollArea.availableWidth
-          spacing: Style.space(14)
+          spacing: Style.space(8)
 
           // ---------- Hero: display icon · title/status ----------
           Item {
@@ -808,7 +842,7 @@ Panel {
 
           Column {
             width: parent.width
-            spacing: Style.space(10)
+            spacing: Style.space(6)
 
             Item {
               width: parent.width
@@ -873,7 +907,7 @@ Panel {
 
           Column {
             width: parent.width
-            spacing: Style.space(10)
+            spacing: Style.space(6)
 
             Item {
               width: parent.width
@@ -927,6 +961,69 @@ Panel {
             }
           }
 
+          // ---------- Orientation & Form Factor Mode ----------
+          PanelSeparator {
+            foreground: root.bar.foreground
+          }
+
+          Column {
+            width: parent.width
+            spacing: Style.space(6)
+
+            Item {
+              width: parent.width
+              implicitHeight: Math.max(modeHeader.implicitHeight, modeCurrent.implicitHeight)
+
+              PanelSectionHeader {
+                id: modeHeader
+                text: "MODE & ORIENTATION"
+                foreground: root.bar.foreground
+                fontFamily: root.bar.fontFamily
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              Text {
+                id: modeCurrent
+                textFormat: Text.PlainText
+                text: {
+                  var idx = root.modePresets.indexOf(root.currentMode)
+                  return idx >= 0 ? root.modeLabels[idx] : root.currentMode
+                }
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+              }
+            }
+
+            Grid {
+              id: modeRow
+              width: parent.width
+              columns: root.modePresets.length
+              spacing: Style.spacing.xs
+
+              readonly property real cellWidth: root.modePresets.length > 0
+                ? (width - spacing * (columns - 1)) / columns
+                : 0
+
+              Repeater {
+                model: root.modePresets
+
+                ModePill {
+                  required property string modelData
+                  required property int index
+
+                  modeValue: modelData
+                  modeIndex: index
+                  modeLabel: root.modeLabels[index]
+                  width: modeRow.cellWidth
+                }
+              }
+            }
+          }
+
           // ---------- Idle Sleep ----------
           PanelSeparator {
             foreground: root.bar.foreground
@@ -934,7 +1031,7 @@ Panel {
 
           Column {
             width: parent.width
-            spacing: Style.space(10)
+            spacing: Style.space(6)
 
             Item {
               width: parent.width
@@ -1037,8 +1134,8 @@ Panel {
     fontSize: Style.font.caption
     foreground: root.bar.foreground
     fontFamily: root.bar.fontFamily
-    horizontalPadding: Style.spacing.sm
-    verticalPadding: Style.spacing.controlPaddingY
+    horizontalPadding: Style.spacing.xs
+    verticalPadding: Style.space(2)
     bordered: true
 
     active: root.activeScaleIndex() === scaleIndex
@@ -1062,8 +1159,8 @@ Panel {
     fontSize: Style.font.caption
     foreground: root.bar.foreground
     fontFamily: root.bar.fontFamily
-    horizontalPadding: Style.spacing.sm
-    verticalPadding: Style.spacing.controlPaddingY
+    horizontalPadding: Style.spacing.xs
+    verticalPadding: Style.space(2)
     bordered: true
 
     active: root.currentRefreshRate === rateValue
@@ -1078,6 +1175,32 @@ Panel {
     }
   }
 
+  component ModePill: Button {
+    id: mPill
+    required property string modeValue
+    required property string modeLabel
+    required property int modeIndex
+
+    text: modeLabel
+    fontSize: Style.font.caption
+    foreground: root.bar.foreground
+    fontFamily: root.bar.fontFamily
+    horizontalPadding: Style.spacing.xs
+    verticalPadding: Style.space(2)
+    bordered: true
+
+    active: root.currentMode === modeValue
+    hasCursor: root.cursorActive && root.focusSection === "mode" && root.selectedIndex === modeIndex
+
+    onClicked: root.setMode(modeValue)
+    onHovered: function(isHovered) {
+      if (!isHovered || root.reflowingText) return
+      root.cursorActive = true
+      root.focusSection = "mode"
+      root.selectedIndex = mPill.modeIndex
+    }
+  }
+
   component IdleSleepPill: Button {
     id: sleepPill
     required property string sleepValue
@@ -1087,8 +1210,8 @@ Panel {
     fontSize: Style.font.caption
     foreground: root.bar.foreground
     fontFamily: root.bar.fontFamily
-    horizontalPadding: Style.spacing.sm
-    verticalPadding: Style.spacing.controlPaddingY
+    horizontalPadding: Style.spacing.xs
+    verticalPadding: Style.space(2)
     bordered: true
 
     active: root.currentIdleSleep === sleepValue

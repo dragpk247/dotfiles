@@ -1,0 +1,27 @@
+#!/bin/bash
+# Set mode for ASUS ROG Flow 13: laptop, tent, tablet, portrait
+
+MODE="${1:-laptop}"
+
+case "$MODE" in
+    laptop)
+        asus-tablet-mode off >/dev/null 2>&1
+        asus-rotate normal
+        ;;
+    tent)
+        asus-tablet-mode on >/dev/null 2>&1
+        asus-rotate inverted
+        ;;
+    tablet)
+        asus-tablet-mode on >/dev/null 2>&1
+        asus-rotate normal
+        ;;
+    portrait)
+        asus-tablet-mode on >/dev/null 2>&1
+        asus-rotate right
+        ;;
+    *)
+        echo "Usage: $0 [laptop|tent|tablet|portrait]"
+        exit 1
+        ;;
+esac
