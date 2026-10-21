@@ -195,6 +195,38 @@ omni_set_clipboard() {
   fi
 }
 
+# ── Universal Wake-on-LAN (No external binary required) ──
+omni_wake_mac() {
+  local mac="$1"
+  if [ -z "$mac" ]; then
+    echo -e "${C_YELLOW}[!] MAC address is empty or not configured.${C_RESET}"
+    return 1
+  fi
+
+  if command -v wakeonlan >/dev/null 2>&1; then
+    wakeonlan "$mac" >/dev/null 2>&1 && return 0
+  fi
+
+  if command -v etherwake >/dev/null 2>&1; then
+    etherwake "$mac" >/dev/null 2>&1 && return 0
+  fi
+
+  if command -v python3 >/dev/null 2>&1; then
+    python3 -c "
+import socket, sys
+mac = '$mac'.replace(':', '').replace('-', '')
+if len(mac) != 12:
+    sys.exit(1)
+payload = bytes.fromhex('f' * 12 + mac * 16)
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+s.sendto(payload, ('255.255.255.255', 9))
+" >/dev/null 2>&1 && return 0
+  fi
+
+  return 1
+}
+
 # ── Banner Header ──
 omni_render_header() {
   local dev_name="$1"

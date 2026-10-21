@@ -37,11 +37,10 @@ phone_media_control() {
 
 phone_wake_desktop() {
   echo -e "${C_CYAN}[*] Sending Wake-on-LAN magic packet to Desktop...${C_RESET}"
-  if [ -n "$DESKTOP_MAC" ] && command -v wakeonlan >/dev/null 2>&1; then
-    wakeonlan "$DESKTOP_MAC"
-    echo -e "${C_GREEN}[✓] WoL packet transmitted.${C_RESET}"
+  if [ -n "$DESKTOP_MAC" ] && omni_wake_mac "$DESKTOP_MAC"; then
+    echo -e "${C_GREEN}[✓] WoL packet transmitted to $DESKTOP_MAC.${C_RESET}"
   else
-    echo -e "${C_YELLOW}[!] Wakeonlan tool or DESKTOP_MAC not configured.${C_RESET}"
+    echo -e "${C_YELLOW}[!] Failed to transmit WoL or DESKTOP_MAC is empty.${C_RESET}"
   fi
 }
 
