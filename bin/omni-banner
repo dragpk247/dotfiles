@@ -55,8 +55,8 @@ CPU_PCT=$(top -bn1 | grep "Cpu(s)" | awk '{printf "%.0f%%", $2 + $4}')
 # GPU Info
 GPU_DATA=""
 if command -v nvidia-smi >/dev/null 2>&1; then
-  GPU_RAW=$(nvidia-smi --query-gpu=utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>/dev/null || echo "")
-  if [ -n "$GPU_RAW" ]; then
+  GPU_RAW=$(nvidia-smi --query-gpu=utilization.gpu,temperature.gpu --format=csv,noheader,nounits 2>&1)
+  if [ $? -eq 0 ] && [ -n "$GPU_RAW" ] && [[ ! "$GPU_RAW" =~ "failed" ]] && [[ ! "$GPU_RAW" =~ "NVIDIA-SMI" ]]; then
     IFS=',' read -r g_util g_temp <<< "$GPU_RAW"
     GPU_DATA=" │ ${C_DIM}GPU:${C_RESET} ${g_util// /}% (${g_temp// /}°C)"
   fi

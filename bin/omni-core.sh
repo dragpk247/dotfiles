@@ -6,7 +6,7 @@
 
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omni"
 CONFIG_FILE="$CONFIG_DIR/config.env"
-export OMNI_VERSION="v1.2.0"
+export OMNI_VERSION="v1.3.0"
 
 # Colors
 export C_RESET="\033[0m"
@@ -150,6 +150,51 @@ omni_is_online() {
   ping -c 1 -W 1 "$target_ip" >/dev/null 2>&1
 }
 
+# ── Tailscale Ping / Latency ──
+omni_ts_ping() {
+  local target_ip="$1"
+  local rtt
+  rtt=$(ping -c 1 -W 1 "$target_ip" 2>/dev/null | grep -oE "time=[0-9.]+" | cut -d= -f2)
+  if [ -n "$rtt" ]; then
+    echo "${rtt}ms"
+  else
+    echo "down"
+  fi
+}
+
+# ── Tmux Status Helper ──
+omni_tmux_badge() {
+  local session_name="$1"
+  if tmux has-session -t "$session_name" 2>/dev/null; then
+    echo -e "${C_GREEN}● on${C_RESET}"
+  else
+    echo -e "${C_DIM}○ off${C_RESET}"
+  fi
+}
+
+# ── Universal Clipboard Getter ──
+omni_get_clipboard() {
+  if command -v termux-clipboard-get >/dev/null 2>&1; then
+    termux-clipboard-get 2>/dev/null || true
+  elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste >/dev/null 2>&1; then
+    wl-paste 2>/dev/null || true
+  elif command -v xclip >/dev/null 2>&1; then
+    xclip -selection clipboard -o 2>/dev/null || true
+  fi
+}
+
+# ── Universal Clipboard Setter ──
+omni_set_clipboard() {
+  local text="$1"
+  if command -v termux-clipboard-set >/dev/null 2>&1; then
+    echo -n "$text" | termux-clipboard-set 2>/dev/null || true
+  elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
+    echo -n "$text" | wl-copy 2>/dev/null || true
+  elif command -v xclip >/dev/null 2>&1; then
+    echo -n "$text" | xclip -selection clipboard 2>/dev/null || true
+  fi
+}
+
 # ── Banner Header ──
 omni_render_header() {
   local dev_name="$1"
@@ -164,7 +209,7 @@ omni_render_header() {
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
   echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
-  echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.2.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
+  echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.3.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
   echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
 }
 
@@ -180,7 +225,6 @@ if [ -z "${WAYLAND_DISPLAY:-}" ]; then
 fi
 
 # ── Dynamic Shell Command Execution ──
-# Allows executing any command like whoami, ls, uname, pwd directly from menus or omni CLI
 omni_exec_custom() {
   local input="$1"
   if [ -z "$input" ]; then
@@ -198,4 +242,77 @@ omni_exec_custom() {
     return 0
   fi
   return 1
+}
+
+# ── Built-in Self-Updater ──
+omni_run_update() {
+  local dev
+  dev=$(omni_detect_device)
+  echo -e "${C_CYAN}${C_BOLD}=== OMNI CLI Self-Updater ($dev) ===${C_RESET}\n"
+
+  case "$dev" in
+    desktop)
+      echo -e "${C_CYAN}[1/3] Checking dotfiles git repo...${C_RESET}"
+      if [ -d "$HOME/dotfiles/.git" ]; then
+        git -C "$HOME/dotfiles" pull --rebase origin main 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Dotfiles repository up to date!${C_RESET}" || \
+          echo -e "${C_YELLOW}[!] Git pull skipped or local changes exist.${C_RESET}"
+      fi
+
+      echo -e "${C_CYAN}[2/3] Verifying ~/.local/bin symlinks...${C_RESET}"
+      mkdir -p "$HOME/.local/bin" 2>/dev/null
+      for f in "$HOME/dotfiles/bin/omni"*; do
+        [ -f "$f" ] || continue
+        chmod +x "$f"
+        bname=$(basename "$f")
+        ln -sf "$f" "$HOME/.local/bin/$bname"
+      done
+      echo -e "${C_GREEN}[✓] Desktop symlinks verified.${C_RESET}"
+
+      echo -e "${C_CYAN}[3/3] Checking phone synchronization...${C_RESET}"
+      if omni_is_online "$PHONE_IP"; then
+        echo -e "${C_CYAN}[*] S24 is online ($PHONE_IP). Pushing updates over SSH...${C_RESET}"
+        scp -P "$PHONE_PORT" -r "$HOME/dotfiles/bin"/omni* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Phone successfully synced!${C_RESET}" || \
+          echo -e "${C_YELLOW}[!] Phone sync failed (check SSH key/port).${C_RESET}"
+      else
+        echo -e "${C_DIM}[-] S24 Phone is currently offline. Skipping push.${C_RESET}"
+      fi
+      ;;
+
+    laptop)
+      echo -e "${C_CYAN}[1/2] Pulling latest dotfiles from Git...${C_RESET}"
+      if [ -d "$HOME/dotfiles/.git" ]; then
+        cd "$HOME/dotfiles" && git pull --rebase origin main && \
+          echo -e "${C_GREEN}[✓] Dotfiles updated!${C_RESET}" || \
+          echo -e "${C_RED}[!] Git pull failed.${C_RESET}"
+      fi
+
+      echo -e "${C_CYAN}[2/2] Updating ~/.local/bin symlinks...${C_RESET}"
+      mkdir -p "$HOME/.local/bin" 2>/dev/null
+      for f in "$HOME/dotfiles/bin/omni"*; do
+        [ -f "$f" ] || continue
+        chmod +x "$f"
+        bname=$(basename "$f")
+        ln -sf "$f" "$HOME/.local/bin/$bname"
+      done
+      echo -e "${C_GREEN}[✓] Laptop symlinks updated.${C_RESET}"
+      ;;
+
+    phone)
+      echo -e "${C_CYAN}[1/1] Syncing from Desktop over SSH...${C_RESET}"
+      if command -v sync-down >/dev/null 2>&1; then
+        sync-down
+      elif [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+        scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" ~/bin/ 2>/dev/null && \
+          chmod +x ~/bin/omni* && \
+          echo -e "${C_GREEN}[✓] Phone updated from Desktop!${C_RESET}" || \
+          echo -e "${C_RED}[!] Download failed.${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Desktop is unreachable.${C_RESET}"
+      fi
+      ;;
+  esac
+
+  echo -e "\n${C_GREEN}${C_BOLD}[✓] Omni CLI is fully up to date!${C_RESET}"
 }

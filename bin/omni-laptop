@@ -6,11 +6,49 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/omni-core.sh"
 
-while true; do
-  d_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$DESKTOP_IP" && d_stat="${C_GREEN}Online${C_RESET}"
-  p_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}Online${C_RESET}"
+laptop_media_control() {
+  echo -e "\n${C_CYAN}${C_BOLD}🎵 Media Control (Desktop or Local):${C_RESET}"
+  echo -e "  [space] Desktop Play/Pause   [m] Desktop Mute Toggle"
+  echo -e "  [+]     Desktop Vol +5%      [-] Desktop Vol -5%"
+  read -rsn1 -p "Select media action: " mact
+  echo ""
+  case "$mact" in
+    " ") ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "playerctl play-pause 2>/dev/null || wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle" ;;
+    m|M) ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle 2>/dev/null" ;;
+    +)   ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ 2>/dev/null" ;;
+    -)   ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- 2>/dev/null" ;;
+  esac
+}
 
-  omni_render_header "Portable Laptop ($(hostname))" "│ Desktop: $d_stat │ Phone: $p_stat"
+laptop_wake_desktop() {
+  echo -e "${C_CYAN}[*] Sending Wake-on-LAN magic packet to Desktop...${C_RESET}"
+  if [ -n "$DESKTOP_MAC" ] && command -v wakeonlan >/dev/null 2>&1; then
+    wakeonlan "$DESKTOP_MAC"
+    echo -e "${C_GREEN}[✓] WoL packet transmitted.${C_RESET}"
+  elif command -v etherwake >/dev/null 2>&1 && [ -n "$DESKTOP_MAC" ]; then
+    etherwake "$DESKTOP_MAC"
+    echo -e "${C_GREEN}[✓] Etherwake packet transmitted.${C_RESET}"
+  else
+    echo -e "${C_YELLOW}[!] Wakeonlan tool or DESKTOP_MAC not configured in ~/.config/omni/config.env.${C_RESET}"
+  fi
+}
+
+laptop_phone_remote() {
+  echo -e "\n${C_CYAN}${C_BOLD}📱 Phone Remote Commands (Termux):${C_RESET}"
+  echo -e "  [1] 🔔 Vibrate / Ping Phone   [2] 🔋 Battery Status"
+  read -rsn1 -p "Select: " pact
+  echo ""
+  case "$pact" in
+    1) ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-vibrate -d 1500; termux-toast 'OMNI: Laptop Pinged!'" 2>/dev/null ;;
+    2) ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-battery-status" 2>/dev/null | jq . ;;
+  esac
+}
+
+while true; do
+  d_stat="${C_RED}down${C_RESET}"; omni_is_online "$DESKTOP_IP" && d_stat="${C_GREEN}$(omni_ts_ping "$DESKTOP_IP")${C_RESET}"
+  p_stat="${C_RED}down${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}$(omni_ts_ping "$PHONE_IP")${C_RESET}"
+
+  omni_render_header "Portable Laptop ($(hostname))" "│ Desktop: $d_stat │ S24: $p_stat"
 
   echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES${C_RESET}"
   echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Remote Antigravity     (Desktop 'ai' session)"
@@ -20,28 +58,37 @@ while true; do
   echo -e "  ${C_CYAN}[5]${C_RESET} ⚡ Remote Jev Chat        (Inference router)"
   echo -e "  ${C_CYAN}[6]${C_RESET} 🖥️  Moonlight Stream Fullscreen"
   echo -e "  ${C_CYAN}[7]${C_RESET} 🖥️  Moonlight Stream Windowed"
-  echo -e "  ${C_CYAN}[8]${C_RESET} 💻 Desktop SSH Terminal Session"
   echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  📱 MOBILE PHONE (Termux & Mirror)${C_RESET}"
-  echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell"
-  echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror (scrcpy)"
+  echo -e "${C_MAGENTA}${C_BOLD}  🌐 CONNECTIVITY & SHELLS (Multi-Device)${C_RESET}"
+  echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Local Laptop Shell     (${LAPTOP_IP:-127.0.0.1} / local)"
+  echo -e "  ${C_CYAN}[8]${C_RESET} 💻 Desktop SSH Terminal   (${DESKTOP_IP:-unknown})"
+  echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell (${PHONE_IP:-unknown}:${PHONE_PORT})"
+  echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror    (scrcpy)"
+  echo -e "  ${C_CYAN}[p]${C_RESET} 📱 Phone Remote Quick Ping (Vibrate / Battery)"
+  echo -e "  ${C_CYAN}[w]${C_RESET} ⚡ Wake Desktop (Wake-on-LAN)"
   echo ""
   echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE & DATA SHARING${C_RESET}"
   echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Desktop or Phone (omni send)"
   echo -e "  ${C_CYAN}[c]${C_RESET} 📋 Cross-Device Clipboard Sync   (omni clip)"
   echo ""
   echo -e "${C_YELLOW}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
+  echo -e "  ${C_CYAN}[m]${C_RESET} 🎵 Remote Desktop Media / Vol"
   echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Desktop Health Monitor (CPU, RAM, GPU)"
   echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 Desktop GPU Monitor"
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
   echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
-  echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Git Pull Dotfiles"
-  echo -e "  ${C_DIM}[Enter / s / q]${C_RESET} 🐚 Shell / Exit"
+  echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Omni Self-Update (omni update)"
+  echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu"
   echo ""
-  read -r -p "Select option [Enter for Shell]: " choice
+  read -rsn1 -p "Select option [Enter/q to exit]: " choice
+  echo ""
 
   case "$choice" in
-    ""|s|S|e|E|q|Q) exit 0 ;;
+    ""|q|Q) exit 0 ;;
+    s|S)
+      echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
+      "${SHELL:-bash}" -l
+      ;;
     1) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
     a|A) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
     2) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
@@ -55,16 +102,19 @@ while true; do
       adb connect "${PHONE_IP}:5555" 2>/dev/null || true
       scrcpy --stay-awake --turn-screen-off || scrcpy
       ;;
+    p|P) laptop_phone_remote ;;
+    w|W) laptop_wake_desktop ;;
     f|F)
       read -e -p "Enter path to file: " fpath
       [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
       ;;
     c|C) "$SCRIPT_DIR/omni-clip" ;;
+    m|M) laptop_media_control ;;
     z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     t|T) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status" ;;
     u|U) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
     k|K) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
-    y|Y) cd "$HOME/dotfiles" && git pull --rebase origin main && echo -e "${C_GREEN}[✓] Dotfiles updated!${C_RESET}" ;;
+    y|Y) omni_run_update ;;
     *)
       if ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"
@@ -73,5 +123,6 @@ while true; do
       ;;
   esac
   echo ""
-  read -rp "Press Enter to continue..." _
+  read -rp "Press Enter to continue (or 'q' to exit to shell)... " cont
+  [[ "$cont" =~ ^[qQ]$ ]] && exit 0
 done

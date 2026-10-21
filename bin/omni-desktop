@@ -6,72 +6,352 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "$SCRIPT_DIR/omni-core.sh"
 
+desktop_clip_ask() {
+  local clip
+  clip=$(omni_get_clipboard)
+  if [ -z "$clip" ]; then
+    echo -e "${C_YELLOW}[!] Clipboard is empty.${C_RESET}"
+    return 1
+  fi
+
+  echo -e "${C_CYAN}${C_BOLD}[📋 Clipboard Content]:${C_RESET}"
+  echo "$clip" | head -n 12
+  [ $(echo "$clip" | wc -l) -gt 12 ] && echo -e "${C_DIM}... (truncated)${C_RESET}"
+  echo ""
+  read -r -p "Optional question / instruction (Enter to explain/fix, 'q' to cancel): " user_q
+  if [[ "$user_q" =~ ^[qQ]$ ]]; then
+    echo -e "${C_DIM}Cancelled.${C_RESET}"
+    return 0
+  fi
+
+  local full_prompt
+  if [ -n "$user_q" ]; then
+    full_prompt="$user_q\n\n\`\`\`\n$clip\n\`\`\`"
+  else
+    full_prompt="Please analyze, explain, or fix the following snippet or error:\n\n\`\`\`\n$clip\n\`\`\`"
+  fi
+
+  echo -e "${C_CYAN}[*] Routing to local Copilot / AI...${C_RESET}"
+  if command -v agy >/dev/null 2>&1; then
+    agy "$full_prompt"
+  elif command -v claude >/dev/null 2>&1; then
+    claude -p "$full_prompt"
+  elif command -v aider >/dev/null 2>&1; then
+    aider --message "$full_prompt"
+  else
+    echo -e "$full_prompt"
+  fi
+}
+
+desktop_clip_run() {
+  local cmd
+  cmd=$(omni_get_clipboard)
+  if [ -z "$cmd" ]; then
+    echo -e "${C_YELLOW}[!] Clipboard is empty.${C_RESET}"
+    return 1
+  fi
+
+  echo -e "${C_GREEN}${C_BOLD}[⚡ Clipboard Command]:${C_RESET}"
+  echo -e "  ${C_CYAN}$cmd${C_RESET}"
+  echo ""
+  read -r -p "Execute this command in desktop shell? (y/N): " confirm
+  if [[ "$confirm" =~ ^[Yy]$ ]]; then
+    echo -e "${C_CYAN}[*] Executing...${C_RESET}"
+    eval "$cmd"
+  else
+    echo -e "${C_DIM}Cancelled.${C_RESET}"
+  fi
+}
+
+desktop_clip_history() {
+  local hist_file="${XDG_STATE_HOME:-$HOME/.local/state}/omarchy/clipboard-history.json"
+  if [ ! -f "$hist_file" ]; then
+    echo -e "${C_YELLOW}[!] Omarchy clipboard history file not found.${C_RESET}"
+    return 1
+  fi
+
+  if ! command -v jq >/dev/null 2>&1 || ! command -v fzf >/dev/null 2>&1; then
+    echo -e "${C_RED}[!] jq or fzf missing.${C_RESET}"
+    return 1
+  fi
+
+  echo -e "${C_CYAN}[*] Opening Omarchy Clipboard History (Search with fzf)...${C_RESET}"
+  local chosen
+  chosen=$(jq -r '.[] | select(.type=="text") | .text' "$hist_file" 2>/dev/null | fzf --height=60% --reverse --prompt="📋 Select Clip (ESC to cancel) > ")
+  if [ -n "$chosen" ]; then
+    omni_set_clipboard "$chosen"
+    echo -e "${C_GREEN}[✓] Copied selection back to desktop clipboard!${C_RESET}"
+  fi
+}
+
+# ── Obsidian Note Ingestion with Graceful Cancel/Exit ──
+desktop_clip_to_obsidian() {
+  local clip
+  clip=$(omni_get_clipboard)
+  if [ -z "$clip" ]; then
+    echo -e "${C_YELLOW}[!] Clipboard is empty.${C_RESET}"
+    return 1
+  fi
+
+  echo -e "${C_CYAN}${C_BOLD}[📓 Ingest Clipboard to Obsidian Vault]:${C_RESET}"
+  echo "$clip" | head -n 8
+  [ $(echo "$clip" | wc -l) -gt 8 ] && echo -e "${C_DIM}... (truncated)${C_RESET}"
+  echo ""
+  echo -e "${C_DIM}(Press 'q' or 'c' to cancel back to menu, or Enter for default title)${C_RESET}"
+  read -r -p "Note title: " ntitle
+
+  if [[ "$ntitle" =~ ^[qQcCeE]$ ]]; then
+    echo -e "${C_DIM}Note capture cancelled. Returning to menu...${C_RESET}"
+    return 0
+  fi
+
+  if [ -z "$ntitle" ]; then
+    ntitle="Quick-Clip-$(date +%Y%m%d-%H%M)"
+  fi
+
+  local vault_dir="$HOME/Documents/Obsidian Vault"
+  local notes_dir="$vault_dir/Agent-Continuous-Knowledge"
+  mkdir -p "$notes_dir" 2>/dev/null
+
+  local fname="${ntitle// /_}.md"
+  local target_file="$notes_dir/$fname"
+
+  read -r -p "Tags / summary (optional, Enter to skip): " ntags
+  if [[ "$ntags" =~ ^[qQ]$ ]]; then
+    echo -e "${C_DIM}Note capture cancelled. Returning to menu...${C_RESET}"
+    return 0
+  fi
+
+  cat << NOTE >> "$target_file"
+# $ntitle
+
+- **Date:** $(date "+%Y-%m-%d %H:%M:%S")
+- **Source:** Desktop Omni CLI
+- **Tags:** ${ntags:-#quick-clip #omni}
+
+## Content
+\`\`\`text
+$clip
+\`\`\`
+
+---
+NOTE
+  echo -e "${C_GREEN}[✓] Saved note to: $target_file${C_RESET}"
+}
+
+# ── Hyprland Window Jumper ──
+desktop_jump_window() {
+  if ! command -v hyprctl >/dev/null 2>&1 || ! command -v jq >/dev/null 2>&1 || ! command -v fzf >/dev/null 2>&1; then
+    echo -e "${C_YELLOW}[!] hyprctl, jq, or fzf not available.${C_RESET}"
+    return 1
+  fi
+
+  local clients
+  clients=$(hyprctl clients -j 2>/dev/null)
+  local selection
+  selection=$(echo "$clients" | jq -r '.[] | select(.title != "") | "[\(.workspace.name)] \(.class) — \(.title) | address:\(.address)"' | fzf --height=40% --reverse --prompt="🪟 Jump to Window (ESC to cancel) > ")
+
+  if [ -n "$selection" ]; then
+    local addr
+    addr=$(echo "$selection" | grep -oE "address:0x[0-9a-fA-F]+" | cut -d: -f2)
+    if [ -n "$addr" ]; then
+      hyprctl dispatch focuswindow "address:$addr" >/dev/null 2>&1
+      echo -e "${C_GREEN}[✓] Switched focus to window: $selection${C_RESET}"
+    fi
+  fi
+}
+
+# ── Phone Remote Actions (Termux-API / ADB) ──
+desktop_phone_remote() {
+  echo -e "\n${C_CYAN}${C_BOLD}📱 Phone Remote Commands (via SSH/Termux):${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 🔔 Ring / Vibrate Phone   (find misplaced phone)"
+  echo -e "  ${C_CYAN}[2]${C_RESET} 🌐 Open URL on Phone     (send active link)"
+  echo -e "  ${C_CYAN}[3]${C_RESET} 📸 Take Phone Photo      (snap front/back camera to ~/Downloads)"
+  echo -e "  ${C_CYAN}[4]${C_RESET} 🔋 Phone Battery & Thermals"
+  echo -e "  ${C_CYAN}[5]${C_RESET} 📩 View Recent SMS"
+  echo -e "  ${C_DIM}[q / Enter] Cancel back to menu${C_RESET}"
+  read -rsn1 -p "Select action: " pact
+  echo ""
+
+  case "$pact" in
+    ""|q|Q) return 0 ;;
+    1)
+      echo -e "${C_CYAN}[*] Vibrating phone...${C_RESET}"
+      ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-vibrate -d 1500; termux-toast 'OMNI: Phone Pinged!'" 2>/dev/null && \
+        echo -e "${C_GREEN}[✓] Pinged phone successfully!${C_RESET}" || echo -e "${C_RED}[!] Could not reach phone.${C_RESET}"
+      ;;
+    2)
+      read -r -p "Enter URL to open on Phone (or Enter for clipboard, 'q' to cancel): " purl
+      [[ "$purl" =~ ^[qQ]$ ]] && return 0
+      [ -z "$purl" ] && purl=$(omni_get_clipboard)
+      if [ -n "$purl" ]; then
+        echo -e "${C_CYAN}[*] Opening $purl on Phone...${C_RESET}"
+        ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-open-url '$purl'" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] URL opened on Phone!${C_RESET}" || echo -e "${C_RED}[!] Failed to send URL.${C_RESET}"
+      fi
+      ;;
+    3)
+      echo -e "${C_CYAN}[*] Triggering phone camera photo...${C_RESET}"
+      local remote_photo="/sdcard/Download/omni_snap_$(date +%s).jpg"
+      ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-camera-photo -c 0 '$remote_photo'" 2>/dev/null && \
+        echo -e "${C_GREEN}[✓] Photo captured: $remote_photo${C_RESET}" || echo -e "${C_RED}[!] Camera photo failed.${C_RESET}"
+      ;;
+    4)
+      ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-battery-status" 2>/dev/null | jq . || echo -e "${C_RED}[!] Phone offline.${C_RESET}"
+      ;;
+    5)
+      ssh -o ConnectTimeout=3 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "termux-sms-list -l 3" 2>/dev/null | jq . || echo -e "${C_RED}[!] Phone offline.${C_RESET}"
+      ;;
+  esac
+}
+
+# ── Media & Volume Controls ──
+desktop_media_control() {
+  echo -e "\n${C_CYAN}${C_BOLD}🎵 Media & Audio Routing:${C_RESET}"
+  echo -e "  ${C_CYAN}[space]${C_RESET} Play / Pause (playerctl)"
+  echo -e "  ${C_CYAN}[n]${C_RESET}     Next Track"
+  echo -e "  ${C_CYAN}[p]${C_RESET}     Previous Track"
+  echo -e "  ${C_CYAN}[+]${C_RESET}     Volume Up (+5%)"
+  echo -e "  ${C_CYAN}[-]${C_RESET}     Volume Down (-5%)"
+  echo -e "  ${C_CYAN}[m]${C_RESET}     Mute / Unmute Toggle"
+  echo -e "  ${C_DIM}[q / Enter] Cancel back to menu${C_RESET}"
+  read -rsn1 -p "Select media action: " mact
+  echo ""
+
+  case "$mact" in
+    ""|q|Q) return 0 ;;
+    " ") playerctl play-pause 2>/dev/null || wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle ;;
+    n|N) playerctl next 2>/dev/null ;;
+    p|P) playerctl previous 2>/dev/null ;;
+    +)   wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%+ 2>/dev/null || pactl set-sink-volume @DEFAULT_SINK@ +5% ;;
+    -)   wpctl set-volume @DEFAULT_AUDIO_SINK@ 5%- 2>/dev/null || pactl set-sink-volume @DEFAULT_SINK@ -5% ;;
+    m|M) wpctl set-mute @DEFAULT_AUDIO_SINK@ toggle 2>/dev/null || pactl set-sink-mute @DEFAULT_SINK@ toggle ;;
+  esac
+}
+
+# ── Power & Performance Profile ──
+desktop_power_profile() {
+  if ! command -v powerprofilesctl >/dev/null 2>&1; then
+    echo -e "${C_YELLOW}[!] powerprofilesctl not available.${C_RESET}"
+    return 1
+  fi
+  local current
+  current=$(powerprofilesctl get 2>/dev/null || echo "unknown")
+  echo -e "${C_CYAN}Current Power Profile:${C_RESET} ${C_BOLD}$current${C_RESET}"
+  echo -e "  [1] Performance  [2] Balanced  [3] Power-saver  [q] Cancel"
+  read -rsn1 -p "Select profile: " psel
+  echo ""
+  case "$psel" in
+    1) powerprofilesctl set performance && echo -e "${C_GREEN}[✓] Profile set to performance.${C_RESET}" ;;
+    2) powerprofilesctl set balanced && echo -e "${C_GREEN}[✓] Profile set to balanced.${C_RESET}" ;;
+    3) powerprofilesctl set power-saver && echo -e "${C_GREEN}[✓] Profile set to power-saver.${C_RESET}" ;;
+    *) echo -e "${C_DIM}Cancelled.${C_RESET}" ;;
+  esac
+}
+
 while true; do
-  p_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}Online${C_RESET}"
-  l_stat="${C_RED}Offline${C_RESET}"; omni_is_online "$LAPTOP_IP" && l_stat="${C_GREEN}Online${C_RESET}"
+  p_stat="${C_RED}down${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}$(omni_ts_ping "$PHONE_IP")${C_RESET}"
+  l_stat="${C_RED}down${C_RESET}"; omni_is_online "$LAPTOP_IP" && l_stat="${C_GREEN}$(omni_ts_ping "$LAPTOP_IP")${C_RESET}"
 
-  omni_render_header "Desktop Workstation ($(hostname))" "│ Phone: $p_stat │ Laptop: $l_stat"
+  omni_render_header "Desktop Workstation ($(hostname))" "│ S24: $p_stat │ Laptop: $l_stat"
 
-  echo -e "${C_CYAN}${C_BOLD}  🚀 LOCAL AI WORKSPACES (tmux)${C_RESET}"
-  echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Antigravity / Agy      (Local 'ai' session)"
-  echo -e "  ${C_CYAN}[2]${C_RESET} 🟣 Claude Code            (Local 'claude' session)"
-  echo -e "  ${C_CYAN}[3]${C_RESET} 💻 Aider Pair Programmer  (Local 'aider' session)"
-  echo -e "  ${C_CYAN}[4]${C_RESET} 🕊️  Hermes Gateway         (Local 'hermes' session)"
-  echo -e "  ${C_CYAN}[5]${C_RESET} ⚡ Jev Intelligent Router (Interactive chat)"
+  echo -e "${C_CYAN}${C_BOLD}  🧠 SMART COPILOT & CLIPBOARD${C_RESET}"
+  echo -e "  ${C_CYAN}[a]${C_RESET} 🤖 Ask Copilot           (Prompt -> AI answer)"
+  echo -e "  ${C_CYAN}[2]${C_RESET} 📋 Send Clipboard to AI   (clip-ask via wl-paste)"
+  echo -e "  ${C_CYAN}[3]${C_RESET} ⚡ Run Clipboard Command  (clip-run preview & exec)"
+  echo -e "  ${C_CYAN}[h]${C_RESET} 🕒 Clipboard History      (fzf search Omarchy history)"
+  echo -e "  ${C_CYAN}[o]${C_RESET} 📓 Ingest Clip to Note    (Optional save to Obsidian)"
+  echo -e "  ${C_CYAN}[c]${C_RESET} 📋 Cross-Device Clipboard (Push/Pull to Phone & Laptop)"
   echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  📱 MOBILE PHONE ($PHONE_IP)${C_RESET}"
-  echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell (Port $PHONE_PORT)"
+  echo -e "${C_GREEN}${C_BOLD}  🚀 LOCAL AI WORKSPACES & SESSIONS${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 🤖 Antigravity / Agy      $(omni_tmux_badge "ai")"
+  echo -e "  ${C_CYAN}[4]${C_RESET} 🟣 Claude Code            $(omni_tmux_badge "claude")"
+  echo -e "  ${C_CYAN}[5]${C_RESET} 💻 Aider Pair Programmer  $(omni_tmux_badge "aider")"
+  echo -e "  ${C_CYAN}[6]${C_RESET} 🕊️  Hermes Gateway         $(omni_tmux_badge "hermes")"
+  echo -e "  ${C_CYAN}[7]${C_RESET} ⚡ Jev Intelligent Router (Interactive chat)"
+  echo ""
+  echo -e "${C_MAGENTA}${C_BOLD}  📱 REMOTE PHONE & MULTI-DEVICE CONTROLS${C_RESET}"
+  echo -e "  ${C_CYAN}[p]${C_RESET} 📱 Phone Remote Hub       (Vibrate/Ping, URL, Camera, SMS)"
   echo -e "  ${C_CYAN}[0]${C_RESET} 📱 Phone Screen Mirror    (scrcpy)"
-  echo -e "  ${C_CYAN}[y]${C_RESET} 📤 Push Updates to Phone"
+  echo -e "  ${C_CYAN}[9]${C_RESET} 📱 Phone Termux SSH Shell (${PHONE_IP:-unknown}:${PHONE_PORT})"
+  echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop SSH Shell       (${LAPTOP_IP:-unknown})"
+  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Device    (omni send)"
+  echo -e "  ${C_CYAN}[n]${C_RESET} 🔔 Push Notification      (omni notify to S24/Desktop)"
+  echo -e "  ${C_CYAN}[y]${C_RESET} 🔄 Omni Update & Sync (omni update)"
   echo ""
-  echo -e "${C_YELLOW}${C_BOLD}  💻 LAPTOP ($LAPTOP_IP)${C_RESET}"
-  echo -e "  ${C_CYAN}[l]${C_RESET} 💻 Laptop SSH Shell"
-  echo ""
-  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE & DATA SHARING${C_RESET}"
-  echo -e "  ${C_CYAN}[f]${C_RESET} 📁 Send File to Laptop or Phone (omni send)"
-  echo -e "  ${C_CYAN}[c]${C_RESET} 📋 Cross-Device Clipboard Sync   (omni clip)"
-  echo -e "  ${C_CYAN}[n]${C_RESET} 🔔 Push Notification to S24     (omni notify)"
-  echo ""
-  echo -e "${C_GREEN}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
-  echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Local System Monitor   (htop / desk-top)"
+  echo -e "${C_YELLOW}${C_BOLD}  🎛️  WORKSPACE, MEDIA & POWER${C_RESET}"
+  echo -e "  ${C_CYAN}[j]${C_RESET} 🪟 Jump to Hyprland Window(Fzf active workspace clients)"
+  echo -e "  ${C_CYAN}[m]${C_RESET} 🎵 Media / Volume Control (Playerctl & Pipewire mute/vol)"
+  echo -e "  ${C_CYAN}[e]${C_RESET} ⚡ Power Profile Switcher (Performance / Balanced / Saver)"
+  echo -e "  ${C_CYAN}[t]${C_RESET} 📊 Local System Monitor   (htop / desk-status)"
   echo -e "  ${C_CYAN}[u]${C_RESET} 🎮 NVIDIA GPU Status"
   echo -e "  ${C_CYAN}[k]${C_RESET} 🔒 Lock Desktop Screen"
+  echo -e "  ${C_CYAN}[s]${C_RESET} 🐚 Local Desktop Shell"
   echo -e "  ${C_CYAN}[z]${C_RESET} 🔍 Fuzzy Action Search    (omni -f)"
-  echo -e "  ${C_DIM}[Enter / s / q]${C_RESET} 🐚 Shell / Exit"
+  echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu back to Shell"
   echo ""
-  read -r -p "Select option [Enter for Shell]: " choice
+  read -rsn1 -p "Select option [Enter/q to exit]: " choice
+  echo ""
 
   case "$choice" in
-    ""|s|S|e|E|q|Q) exit 0 ;;
+    ""|q|Q) exit 0 ;;
+    s|S)
+      echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
+      "${SHELL:-bash}" -l
+      ;;
+    a|A)
+      read -r -p "Prompt ('q' to cancel): " p
+      if [ -n "$p" ] && [[ ! "$p" =~ ^[qQ]$ ]]; then
+        if command -v agy >/dev/null 2>&1; then
+          agy "$p"
+        elif command -v claude >/dev/null 2>&1; then
+          claude -p "$p"
+        else
+          echo "$p"
+        fi
+      fi
+      ;;
+    2) desktop_clip_ask ;;
+    3) desktop_clip_run ;;
+    h|H) desktop_clip_history ;;
+    o|O) desktop_clip_to_obsidian ;;
+    c|C) "$SCRIPT_DIR/omni-clip" ;;
     1) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
-    2) [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude ;;
-    3) [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider ;;
-    4) tmux attach -t hermes 2>/dev/null || tmux new-session -s hermes 'hermes chat' ;;
-    5) [ -f "$HOME/.local/bin/jev-chat" ] && "$HOME/.local/bin/jev-chat" ;;
-    9) ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" ;;
+    4) [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude ;;
+    5) [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider ;;
+    6) tmux attach -t hermes 2>/dev/null || tmux new-session -s hermes 'hermes chat' ;;
+    7) [ -f "$HOME/.local/bin/jev-chat" ] && "$HOME/.local/bin/jev-chat" ;;
+    p|P) desktop_phone_remote ;;
     0) 
       adb connect "${PHONE_IP}:5555" 2>/dev/null || true
       scrcpy --stay-awake --turn-screen-off || scrcpy
       ;;
+    9) ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" ;;
+    l|L) ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}" ;;
     f|F)
-      read -e -p "Enter path to file: " fpath
-      [ -n "$fpath" ] && "$SCRIPT_DIR/omni-send" "$fpath"
+      read -e -p "Enter path to file ('q' to cancel): " fpath
+      if [ -n "$fpath" ] && [[ ! "$fpath" =~ ^[qQ]$ ]]; then
+        "$SCRIPT_DIR/omni-send" "$fpath"
+      fi
       ;;
-    c|C) "$SCRIPT_DIR/omni-clip" ;;
     n|N)
-      read -r -p "Enter notification message: " nmsg
-      [ -n "$nmsg" ] && "$SCRIPT_DIR/omni-notify" "$nmsg"
+      read -r -p "Enter notification message ('q' to cancel): " nmsg
+      if [ -n "$nmsg" ] && [[ ! "$nmsg" =~ ^[qQ]$ ]]; then
+        "$SCRIPT_DIR/omni-notify" "$nmsg"
+      fi
       ;;
-    z|Z) "$SCRIPT_DIR/omni-fzf" ;;
-    y|Y)
+    y|Y) omni_run_update ;;
       echo -e "${C_CYAN}[*] Pushing phone-hub updates to phone...${C_RESET}"
       scp -P "$PHONE_PORT" -r "$SCRIPT_DIR"/* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
         echo -e "${C_GREEN}[✓] Phone updated from Desktop!${C_RESET}" || echo -e "${C_RED}[!] Push failed.${C_RESET}"
       ;;
-    l|L) ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}" ;;
+    j|J) desktop_jump_window ;;
+    m|M) desktop_media_control ;;
+    e|E) desktop_power_profile ;;
     t|T) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
     u|U) nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader ;;
     k|K) loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true ;;
+    z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     *)
       if ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"
@@ -80,5 +360,6 @@ while true; do
       ;;
   esac
   echo ""
-  read -rp "Press Enter to continue..." _
+  read -rp "Press Enter to continue (or 'q' to exit to shell)... " cont
+  [[ "$cont" =~ ^[qQ]$ ]] && exit 0
 done
