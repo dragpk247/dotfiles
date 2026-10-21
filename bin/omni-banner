@@ -15,14 +15,30 @@ C_RESET="\033[0m"
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/omni"
 mkdir -p "$CACHE_DIR" 2>/dev/null
 
-PHONE_IP="100.118.50.88"
-LAPTOP_IP="100.72.213.23"
+CONFIG_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omni/config.env"
+if [ -f "$CONFIG_FILE" ]; then
+  # shellcheck source=/dev/null
+  source "$CONFIG_FILE"
+fi
+
+PHONE_IP="${PHONE_IP:-100.118.50.88}"
+LAPTOP_IP="${LAPTOP_IP:-100.72.213.23}"
+DESKTOP_IP="${DESKTOP_IP:-100.86.159.86}"
+
+# Detect if we are on laptop or desktop to show the OTHER peer status
+LOCAL_HOST=$(hostname)
+PEER_NAME="Desktop"
+PEER_IP="$DESKTOP_IP"
+if [[ "$LOCAL_HOST" =~ "desktop" ]]; then
+  PEER_NAME="Laptop"
+  PEER_IP="$LAPTOP_IP"
+fi
 
 # Read cache if fresh (< 30s)
 CACHE_FILE="$CACHE_DIR/status_cache"
 NOW=$(date +%s)
 p_stat="${C_GREEN}Online${C_RESET}"
-l_stat="${C_GREEN}Online${C_RESET}"
+peer_stat="${C_GREEN}Online${C_RESET}"
 
 if [ -f "$CACHE_FILE" ]; then
   # shellcheck source=/dev/null
@@ -31,20 +47,20 @@ fi
 
 if [ -z "${STATUS_TIMESTAMP:-}" ] || [ $((NOW - STATUS_TIMESTAMP)) -ge 30 ]; then
   (
-    p_ok=0; l_ok=0
+    p_ok=0; peer_ok=0
     ping -c 1 -W 1 "$PHONE_IP" >/dev/null 2>&1 && p_ok=1
-    ping -c 1 -W 1 "$LAPTOP_IP" >/dev/null 2>&1 && l_ok=1
+    ping -c 1 -W 1 "$PEER_IP" >/dev/null 2>&1 && peer_ok=1
     cat << STAT > "$CACHE_FILE.tmp"
 STATUS_TIMESTAMP=$NOW
 CACHE_P_OK=$p_ok
-CACHE_L_OK=$l_ok
+CACHE_PEER_OK=$peer_ok
 STAT
     mv -f "$CACHE_FILE.tmp" "$CACHE_FILE"
   ) >/dev/null 2>&1 &
 fi
 
 [ "${CACHE_P_OK:-1}" = "1" ] && p_stat="${C_GREEN}Online${C_RESET}" || p_stat="${C_RED}Offline${C_RESET}"
-[ "${CACHE_L_OK:-1}" = "1" ] && l_stat="${C_GREEN}Online${C_RESET}" || l_stat="${C_RED}Offline${C_RESET}"
+[ "${CACHE_PEER_OK:-1}" = "1" ] && peer_stat="${C_GREEN}Online${C_RESET}" || peer_stat="${C_RED}Offline${C_RESET}"
 
 # Fast local metrics (< 5ms)
 HOST=$(hostname)
@@ -72,7 +88,7 @@ cat << "BANNER"
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
 echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
-echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.2.0${C_RESET} │ ${C_BOLD}Host:${C_RESET} ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT}) │ Phone: ${p_stat} │ Laptop: ${l_stat}"
+echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET} │ ${C_BOLD}Host:${C_RESET} ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT}) │ Phone: ${p_stat} │ ${PEER_NAME}: ${peer_stat}"
 echo -e " ${C_DIM}Telemetry:${C_RESET} CPU: ${CPU_PCT} │ RAM: ${MEM_PCT}${GPU_DATA} │ ${C_DIM}Dashboard:${C_RESET} type ${C_BOLD}'m'${C_RESET} or ${C_BOLD}'menu'${C_RESET}"
 echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
 echo ""

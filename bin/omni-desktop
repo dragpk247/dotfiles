@@ -340,7 +340,8 @@ while true; do
         "$SCRIPT_DIR/omni-notify" "$nmsg"
       fi
       ;;
-    y|Y) omni_run_update ;;
+    y|Y)
+      omni_run_update
       echo -e "${C_CYAN}[*] Pushing phone-hub updates to phone...${C_RESET}"
       scp -P "$PHONE_PORT" -r "$SCRIPT_DIR"/* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
         echo -e "${C_GREEN}[✓] Phone updated from Desktop!${C_RESET}" || echo -e "${C_RED}[!] Push failed.${C_RESET}"
