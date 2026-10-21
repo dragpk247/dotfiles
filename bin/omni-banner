@@ -78,17 +78,37 @@ if command -v nvidia-smi >/dev/null 2>&1; then
   fi
 fi
 
-# Print Full OMNI CLI Banner
-echo -e "${C_CYAN}"
-cat << "BANNER"
+# Detect terminal width
+cols=$(tput cols 2>/dev/null || echo "${COLUMNS:-80}")
+[ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
+hr_width=$(( cols < 75 ? cols : 75 ))
+hr_line=$(printf "${C_DIM}%.0s─${C_RESET}" $(seq 1 "$hr_width"))
+
+if [ "$cols" -ge 65 ]; then
+  # Full wide ASCII banner
+  echo -e "${C_CYAN}"
+  cat << "BANNER"
   ___  __  __ _   _ ___   ____ _     ___ 
  / _ \|  \/  | \ | |_ _| / ___| |   |_ _|
 | | | | |\/| |  \| || | | |   | |    | | 
 | |_| | |  | | |\  || | | |___| |___ | | 
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
-echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
-echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET} │ ${C_BOLD}Host:${C_RESET} ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT}) │ Phone: ${p_stat} │ ${PEER_NAME}: ${peer_stat}"
-echo -e " ${C_DIM}Telemetry:${C_RESET} CPU: ${CPU_PCT} │ RAM: ${MEM_PCT}${GPU_DATA} │ ${C_DIM}Dashboard:${C_RESET} type ${C_BOLD}'m'${C_RESET} or ${C_BOLD}'menu'${C_RESET}"
-echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+  echo -e "$hr_line"
+  echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET} │ ${C_BOLD}Host:${C_RESET} ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT}) │ Phone: ${p_stat} │ ${PEER_NAME}: ${peer_stat}"
+  echo -e " ${C_DIM}Telemetry:${C_RESET} CPU: ${CPU_PCT} │ RAM: ${MEM_PCT}${GPU_DATA} │ ${C_DIM}Dashboard:${C_RESET} type ${C_BOLD}'m'${C_RESET} or ${C_BOLD}'menu'${C_RESET}"
+  echo -e "$hr_line"
+elif [ "$cols" -ge 46 ]; then
+  # Medium width banner (e.g., split-pane or tablet)
+  echo -e "$hr_line"
+  echo -e " ${C_CYAN}${C_BOLD}⚡ OMNI Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET} │ ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT})"
+  echo -e " Phone: ${p_stat} │ ${PEER_NAME}: ${peer_stat} │ CPU: ${CPU_PCT} │ RAM: ${MEM_PCT}"
+  echo -e " ${C_DIM}Dashboard:${C_RESET} type ${C_BOLD}'m'${C_RESET} or ${C_BOLD}'omni'${C_RESET}"
+  echo -e "$hr_line"
+else
+  # Mobile / narrow view (e.g. Phone Termux)
+  echo -e "${C_CYAN}${C_BOLD}⚡ OMNI v1.3.0${C_RESET} │ ${C_GREEN}${HOST}${C_RESET} (${UPTIME_SHORT})"
+  echo -e " ${p_stat} Phone │ ${peer_stat} ${PEER_NAME} │ ${CPU_PCT} CPU"
+  echo -e "$hr_line"
+fi
 echo ""

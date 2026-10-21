@@ -227,22 +227,95 @@ s.sendto(payload, ('255.255.255.255', 9))
   return 1
 }
 
-# ── Banner Header ──
+# ── Dynamic Terminal Geometry Helpers ──
+omni_term_cols() {
+  if [ -n "${COLUMNS:-}" ] && [ "$COLUMNS" -gt 0 ] 2>/dev/null; then
+    echo "$COLUMNS"
+    return
+  fi
+  local c
+  c=$(tput cols 2>/dev/null) || c=80
+  [ -z "$c" ] || [ "$c" -le 0 ] && c=80
+  echo "$c"
+}
+
+omni_term_lines() {
+  if [ -n "${LINES:-}" ] && [ "$LINES" -gt 0 ] 2>/dev/null; then
+    echo "$LINES"
+    return
+  fi
+  local l
+  l=$(tput lines 2>/dev/null) || l=24
+  [ -z "$l" ] || [ "$l" -le 0 ] && l=24
+  echo "$l"
+}
+
+omni_hr() {
+  local max="${1:-80}"
+  local cols
+  cols=$(omni_term_cols)
+  [ "$cols" -gt "$max" ] && cols="$max"
+  printf "${C_DIM}"
+  printf '─%.0s' $(seq 1 "$cols")
+  printf "${C_RESET}\n"
+}
+
+# ── Responsive Menu Item Formatter ──
+omni_menu_item() {
+  local key="$1"
+  local label="$2"
+  local desc="${3:-}"
+  local badge="${4:-}"
+  local cols
+  cols=$(omni_term_cols)
+
+  if [ "$cols" -ge 72 ] && [ -n "$desc" ]; then
+    printf "  ${C_CYAN}[%s]${C_RESET} %-25s ${C_DIM}(%s)${C_RESET} %s\n" "$key" "$label" "$desc" "$badge"
+  elif [ "$cols" -ge 48 ] && [ -n "$desc" ]; then
+    printf "  ${C_CYAN}[%s]${C_RESET} %s ${C_DIM}(%s)${C_RESET} %s\n" "$key" "$label" "$desc" "$badge"
+  else
+    printf "  ${C_CYAN}[%s]${C_RESET} %s %s\n" "$key" "$label" "$badge"
+  fi
+}
+
+# ── Responsive Banner Header ──
 omni_render_header() {
   local dev_name="$1"
   local extra_info="${2:-}"
+  local cols lines
+  cols=$(omni_term_cols)
+  lines=$(omni_term_lines)
+
   clear
-  echo -e "${C_CYAN}"
-  cat << "BANNER"
+  if [ "$cols" -ge 65 ] && [ "$lines" -ge 22 ]; then
+    echo -e "${C_CYAN}"
+    cat << "BANNER"
   ___  __  __ _   _ ___   ____ _     ___ 
  / _ \|  \/  | \ | |_ _| / ___| |   |_ _|
 | | | | |\/| |  \| || | | |   | |    | | 
 | |_| | |  | | |\  || | | |___| |___ | | 
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
-  echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
-  echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.3.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
-  echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+    omni_hr 75
+    echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.3.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
+    omni_hr 75
+  elif [ "$cols" -ge 46 ]; then
+    omni_hr "$cols"
+    echo -e " ${C_CYAN}${C_BOLD}⚡ OMNI Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.3.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET}"
+    if [ -n "$extra_info" ]; then
+      local clean_extra="${extra_info#│ }"
+      echo -e " ${C_DIM}Status:${C_RESET} ${clean_extra}"
+    fi
+    omni_hr "$cols"
+  else
+    # Ultra-compact view for mobile/narrow terminals (cols < 46)
+    echo -e "${C_CYAN}${C_BOLD}⚡ OMNI ${C_YELLOW}${OMNI_VERSION:-v1.3.0}${C_RESET} │ ${C_GREEN}${dev_name}${C_RESET}"
+    if [ -n "$extra_info" ]; then
+      local clean_extra="${extra_info#│ }"
+      echo -e " ${C_DIM}${clean_extra}${C_RESET}"
+    fi
+    omni_hr "$cols"
+  fi
 }
 
 # Auto-detect Wayland socket if unset
