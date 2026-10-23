@@ -46,34 +46,58 @@ while true; do
 
   omni_render_header "Portable Laptop ($(hostname))" "│ Desktop: $d_stat │ S24: $p_stat"
 
-  echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES${C_RESET}"
-  omni_menu_item "1" "🤖 Remote Antigravity" "Desktop 'ai' session"
-  omni_menu_item "a" "🚀 Local Antigravity" "Local 'ai' session"
-  omni_menu_item "2" "🟣 Remote Claude Code" "Desktop 'claude' session"
-  omni_menu_item "3" "💻 Remote Aider" "Desktop 'aider' session"
-  omni_menu_item "5" "⚡ Remote Jev Chat" "Inference router"
-  omni_menu_item "6" "🖥️  Moonlight Fullscreen" "Stream Desktop"
-  omni_menu_item "7" "🖥️  Moonlight Windowed" "Stream Desktop"
+  # ── Area 1: Desktop Workspaces & AI ──
+  if [ "${OMNI_ENABLE_AI:-true}" = "true" ]; then
+    echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES${C_RESET}"
+    omni_menu_item "1" "🤖 Remote Antigravity" "Desktop 'ai' session"
+    omni_menu_item "a" "🚀 Local Antigravity" "Local 'ai' session"
+    omni_menu_item "2" "🟣 Remote Claude Code" "Desktop 'claude' session"
+    omni_menu_item "3" "💻 Remote Aider" "Desktop 'aider' session"
+    omni_menu_item "5" "⚡ Remote Jev Chat" "Inference router"
+    omni_menu_item "6" "🖥️  Moonlight Fullscreen" "Stream Desktop"
+    omni_menu_item "7" "🖥️  Moonlight Windowed" "Stream Desktop"
+    echo ""
+  fi
+
+  # ── Area 2: Multi-Device Connectivity ──
+  if [ "${OMNI_ENABLE_FLEET:-true}" = "true" ]; then
+    echo -e "${C_MAGENTA}${C_BOLD}  🌐 CONNECTIVITY & SHELLS (Multi-Device)${C_RESET}"
+    omni_menu_item "s" "🐚 Local Laptop Shell" "${LAPTOP_IP:-127.0.0.1} / local"
+    omni_menu_item "8" "💻 Desktop SSH Terminal" "${DESKTOP_IP:-unknown}"
+    omni_menu_item "9" "📱 Phone Termux SSH" "${PHONE_IP:-unknown}:${PHONE_PORT}"
+    omni_menu_item "0" "📱 Phone Screen Mirror" "scrcpy"
+    omni_menu_item "p" "📱 Phone Remote Quick Ping" "Vibrate / Battery"
+    if [ -n "${DESKTOP_MAC:-}" ]; then
+      omni_menu_item "w" "⚡ Wake Desktop (WoL)" "Magic packet to ${DESKTOP_MAC}"
+    fi
+    echo ""
+  fi
+
+  # ── Area 3: Data & File Sharing ──
+  if [ "${OMNI_ENABLE_CLIPBOARD:-true}" = "true" ]; then
+    echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE & DATA SHARING${C_RESET}"
+    omni_menu_item "f" "📁 Send File to Peer" "omni send"
+    omni_menu_item "c" "📋 Cross-Device Clipboard" "omni clip"
+    echo ""
+  fi
+
+  # ── Area 4: Telemetry & Controls ──
+  if [ "${OMNI_ENABLE_SYSTEM:-true}" = "true" ]; then
+    echo -e "${C_YELLOW}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
+    omni_menu_item "m" "🎵 Remote Desktop Media" "Vol / Play"
+    omni_menu_item "t" "📊 Desktop Health Monitor" "CPU, RAM, GPU"
+    omni_menu_item "u" "🎮 Desktop GPU Monitor" "nvidia-smi"
+    omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
+    omni_menu_item "y" "🔄 Omni Self-Update" "omni update"
+    echo ""
+  fi
+
+  # ── Area 5: Custom User Tools & Shortcuts ──
+  omni_render_custom_tools
+
   echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  🌐 CONNECTIVITY & SHELLS (Multi-Device)${C_RESET}"
-  omni_menu_item "s" "🐚 Local Laptop Shell" "${LAPTOP_IP:-127.0.0.1} / local"
-  omni_menu_item "8" "💻 Desktop SSH Terminal" "${DESKTOP_IP:-unknown}"
-  omni_menu_item "9" "📱 Phone Termux SSH" "${PHONE_IP:-unknown}:${PHONE_PORT}"
-  omni_menu_item "0" "📱 Phone Screen Mirror" "scrcpy"
-  omni_menu_item "p" "📱 Phone Remote Quick Ping" "Vibrate / Battery"
-  omni_menu_item "w" "⚡ Wake Desktop" "Wake-on-LAN"
-  echo ""
-  echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE & DATA SHARING${C_RESET}"
-  omni_menu_item "f" "📁 Send File to Peer" "omni send"
-  omni_menu_item "c" "📋 Cross-Device Clipboard" "omni clip"
-  echo ""
-  echo -e "${C_YELLOW}${C_BOLD}  📊 TELEMETRY & CONTROLS${C_RESET}"
-  omni_menu_item "m" "🎵 Remote Desktop Media" "Vol / Play"
-  omni_menu_item "t" "📊 Desktop Health Monitor" "CPU, RAM, GPU"
-  omni_menu_item "u" "🎮 Desktop GPU Monitor" "nvidia-smi"
-  omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
-  omni_menu_item "y" "🔄 Omni Self-Update" "omni update"
+  omni_menu_item "S" "⚙️  Setup & Reconfigure" "Fleet config"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu"
   echo ""
   read -rsn1 -p "Select option [Enter/q to exit]: " choice
@@ -81,9 +105,14 @@ while true; do
 
   case "$choice" in
     ""|q|Q) exit 0 ;;
-    s|S)
+    s)
       echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
       "${SHELL:-bash}" -l
+      ;;
+    S)
+      omni_run_setup
+      # shellcheck source=/dev/null
+      [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
       ;;
     1) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
     a|A) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
@@ -130,7 +159,9 @@ while true; do
     k|K) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
     y|Y) omni_run_update ;;
     *)
-      if ! omni_exec_custom "$choice"; then
+      if omni_exec_custom_tool "$choice"; then
+        :
+      elif ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"
         sleep 0.8
       fi

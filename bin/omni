@@ -30,6 +30,83 @@ case "${1:-}" in
     omni_run_setup
     exit 0
     ;;
+  pair)
+    shift
+    target="${1:-}"
+    case "$target" in
+      laptop|lap) omni_pair_device "$LAPTOP_USER" "$LAPTOP_IP" 22 ;;
+      phone|s24) omni_pair_device "$PHONE_USER" "$PHONE_IP" "$PHONE_PORT" ;;
+      desktop|desk) omni_pair_device "$DESKTOP_USER" "$DESKTOP_IP" 22 ;;
+      *)
+        echo -e "${C_CYAN}Omni SSH Key-Pairing Assistant${C_RESET}"
+        echo "Usage: omni pair [desktop|laptop|phone]"
+        read -r -p "Select target [desktop/laptop/phone]: " p_ans
+        case "$p_ans" in
+          desktop|desk) omni_pair_device "$DESKTOP_USER" "$DESKTOP_IP" 22 ;;
+          laptop|lap) omni_pair_device "$LAPTOP_USER" "$LAPTOP_IP" 22 ;;
+          phone|s24) omni_pair_device "$PHONE_USER" "$PHONE_IP" "$PHONE_PORT" ;;
+          *) echo "Cancelled." ;;
+        esac
+        ;;
+    esac
+    exit 0
+    ;;
+  wol)
+    shift
+    target="${1:-}"
+    case "$target" in
+      desktop|desk)
+        echo -e "${C_CYAN}[*] Sending Wake-on-LAN to Desktop ($DESKTOP_MAC)...${C_RESET}"
+        omni_wake_mac "$DESKTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent.${C_RESET}"
+        ;;
+      laptop|lap)
+        echo -e "${C_CYAN}[*] Sending Wake-on-LAN to Laptop ($LAPTOP_MAC)...${C_RESET}"
+        omni_wake_mac "$LAPTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent.${C_RESET}"
+        ;;
+      "")
+        echo -e "${C_CYAN}Omni Wake-on-LAN${C_RESET}"
+        if [ "$CURRENT_DEVICE" = "laptop" ] && [ -n "$DESKTOP_MAC" ]; then
+          omni_wake_mac "$DESKTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent to Desktop ($DESKTOP_MAC).${C_RESET}"
+        elif [ -n "$LAPTOP_MAC" ]; then
+          omni_wake_mac "$LAPTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent to Laptop ($LAPTOP_MAC).${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Please specify a target: omni wol [desktop|laptop|<MAC>]${C_RESET}"
+        fi
+        ;;
+      *)
+        omni_wake_mac "$target" && echo -e "${C_GREEN}[✓] Magic packet sent to $target.${C_RESET}"
+        ;;
+    esac
+    exit 0
+    ;;
+  ts|tailscale)
+    echo -e "${C_CYAN}${C_BOLD}=== OMNI Tailscale Fleet Status ===${C_RESET}\n"
+    if command -v tailscale >/dev/null 2>&1; then
+      tailscale status
+      echo ""
+      echo -e "${C_BOLD}Ping Latency:${C_RESET}"
+      [ "$DESKTOP_IP" != "127.0.0.1" ] && echo -e "  Desktop ($DESKTOP_IP): $(omni_ts_ping "$DESKTOP_IP")"
+      [ "$LAPTOP_IP" != "127.0.0.1" ] && echo -e "  Laptop  ($LAPTOP_IP):  $(omni_ts_ping "$LAPTOP_IP")"
+      [ "$PHONE_IP" != "127.0.0.1" ] && echo -e "  Phone   ($PHONE_IP):   $(omni_ts_ping "$PHONE_IP")"
+    else
+      echo -e "${C_YELLOW}[!] Tailscale not installed on this machine.${C_RESET}"
+    fi
+    exit 0
+    ;;
+  tools)
+    shift
+    if [ ! -f "$CUSTOM_TOOLS_FILE" ]; then
+      echo -e "${C_YELLOW}[!] No custom tools configured at $CUSTOM_TOOLS_FILE${C_RESET}"
+      echo -e "Run 'omni setup' or create $CUSTOM_TOOLS_FILE with format:"
+      echo -e "  <hotkey> | <label> | <command>"
+    else
+      echo -e "${C_CYAN}${C_BOLD}=== OMNI Custom Registered Tools ===${C_RESET}\n"
+      cat "$CUSTOM_TOOLS_FILE"
+      echo ""
+      echo -e "${C_DIM}Edit with: \${EDITOR:-nano} $CUSTOM_TOOLS_FILE${C_RESET}"
+    fi
+    exit 0
+    ;;
   send)
     shift
     exec "$SCRIPT_DIR/omni-send" "$@"
@@ -65,6 +142,11 @@ case "${1:-}" in
     echo "Usage: omni [menu|update|send|clip|voice|notify|fzf|setup|--phone|--laptop|--desktop]"
     echo ""
     echo "Commands:"
+    echo "  omni setup            Interactive onboarding, NIC/MAC binding & tool setup"
+    echo "  omni pair [peer]      Automated passwordless SSH key pairing"
+    echo "  omni wol [desk|lap]   Send Wake-on-LAN magic packet by hardware MAC"
+    echo "  omni ts               Tailscale mesh status and peer latency test"
+    echo "  omni tools            List or view custom registered user tools"
     echo "  omni update           Self-updater (git pull, symlink & push to phone)"
     echo "  omni send <file>      3-Way file transfer (Desktop <-> Laptop <-> S24)"
     echo "  omni clip [push|pull] Universal clipboard sync across all devices"

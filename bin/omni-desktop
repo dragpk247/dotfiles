@@ -255,39 +255,64 @@ while true; do
 
   omni_render_header "Desktop Workstation ($(hostname))" "│ S24: $p_stat │ Laptop: $l_stat"
 
-  echo -e "${C_CYAN}${C_BOLD}  🧠 SMART COPILOT & CLIPBOARD${C_RESET}"
-  omni_menu_item "a" "🤖 Ask Copilot" "Prompt -> AI answer"
-  omni_menu_item "2" "📋 Send Clipboard to AI" "clip-ask via wl-paste"
-  omni_menu_item "3" "⚡ Run Clipboard Command" "clip-run preview & exec"
-  omni_menu_item "h" "🕒 Clipboard History" "fzf search history"
-  omni_menu_item "o" "📓 Ingest Clip to Note" "Save to Obsidian"
-  omni_menu_item "c" "📋 Cross-Device Clipboard" "Push/Pull"
+  # ── Area 1: Clipboard & Smart Copilot ──
+  if [ "${OMNI_ENABLE_CLIPBOARD:-true}" = "true" ]; then
+    echo -e "${C_CYAN}${C_BOLD}  🧠 SMART COPILOT & CLIPBOARD${C_RESET}"
+    omni_menu_item "a" "🤖 Ask Copilot" "Prompt -> AI answer"
+    omni_menu_item "2" "📋 Send Clipboard to AI" "clip-ask via wl-paste"
+    omni_menu_item "3" "⚡ Run Clipboard Command" "clip-run preview & exec"
+    omni_menu_item "h" "🕒 Clipboard History" "fzf search history"
+    omni_menu_item "o" "📓 Ingest Clip to Note" "Save to Obsidian"
+    omni_menu_item "c" "📋 Cross-Device Clipboard" "Push/Pull"
+    echo ""
+  fi
+
+  # ── Area 2: Local AI Workspaces ──
+  if [ "${OMNI_ENABLE_AI:-true}" = "true" ]; then
+    echo -e "${C_GREEN}${C_BOLD}  🚀 LOCAL AI WORKSPACES & SESSIONS${C_RESET}"
+    omni_menu_item "1" "🤖 Antigravity / Agy" "" "$(omni_tmux_badge "ai")"
+    omni_menu_item "4" "🟣 Claude Code" "" "$(omni_tmux_badge "claude")"
+    omni_menu_item "5" "💻 Aider Pair Programmer" "" "$(omni_tmux_badge "aider")"
+    omni_menu_item "6" "🕊️  Hermes Gateway" "" "$(omni_tmux_badge "hermes")"
+    omni_menu_item "7" "⚡ Jev Intelligent Router" "Interactive chat"
+    echo ""
+  fi
+
+  # ── Area 3: Remote Phone & Multi-Device Fleet ──
+  if [ "${OMNI_ENABLE_FLEET:-true}" = "true" ]; then
+    echo -e "${C_MAGENTA}${C_BOLD}  📱 REMOTE PHONE & MULTI-DEVICE CONTROLS${C_RESET}"
+    omni_menu_item "p" "📱 Phone Remote Hub" "Ping, URL, Camera, SMS"
+    omni_menu_item "0" "📱 Phone Screen Mirror" "scrcpy"
+    omni_menu_item "9" "📱 Phone Termux SSH" "${PHONE_IP:-unknown}:${PHONE_PORT}"
+    omni_menu_item "l" "💻 Laptop SSH Shell" "${LAPTOP_IP:-unknown}"
+    omni_menu_item "f" "📁 Send File to Device" "omni send"
+    omni_menu_item "n" "🔔 Push Notification" "omni notify"
+    if [ -n "${LAPTOP_MAC:-}" ]; then
+      omni_menu_item "w" "⚡ Wake Laptop (WoL)" "Magic packet to ${LAPTOP_MAC}"
+    fi
+    omni_menu_item "y" "🔄 Omni Update & Sync" "omni update"
+    echo ""
+  fi
+
+  # ── Area 4: Workspace, Media & Power ──
+  if [ "${OMNI_ENABLE_SYSTEM:-true}" = "true" ]; then
+    echo -e "${C_YELLOW}${C_BOLD}  🎛️  WORKSPACE, MEDIA & POWER${C_RESET}"
+    omni_menu_item "j" "🪟 Jump to Window" "Hyprland clients"
+    omni_menu_item "m" "🎵 Media / Volume" "Playerctl & Pipewire"
+    omni_menu_item "e" "⚡ Power Profile" "powerprofilesctl"
+    omni_menu_item "t" "📊 System Monitor" "${OMNI_SYS_MONITOR:-htop}"
+    omni_menu_item "u" "🎮 NVIDIA GPU Status" "nvidia-smi"
+    omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
+    omni_menu_item "s" "🐚 Local Desktop Shell" "bash"
+    echo ""
+  fi
+
+  # ── Area 5: Custom User Tools & Shortcuts ──
+  omni_render_custom_tools
+
   echo ""
-  echo -e "${C_GREEN}${C_BOLD}  🚀 LOCAL AI WORKSPACES & SESSIONS${C_RESET}"
-  omni_menu_item "1" "🤖 Antigravity / Agy" "" "$(omni_tmux_badge "ai")"
-  omni_menu_item "4" "🟣 Claude Code" "" "$(omni_tmux_badge "claude")"
-  omni_menu_item "5" "💻 Aider Pair Programmer" "" "$(omni_tmux_badge "aider")"
-  omni_menu_item "6" "🕊️  Hermes Gateway" "" "$(omni_tmux_badge "hermes")"
-  omni_menu_item "7" "⚡ Jev Intelligent Router" "Interactive chat"
-  echo ""
-  echo -e "${C_MAGENTA}${C_BOLD}  📱 REMOTE PHONE & MULTI-DEVICE CONTROLS${C_RESET}"
-  omni_menu_item "p" "📱 Phone Remote Hub" "Ping, URL, Camera, SMS"
-  omni_menu_item "0" "📱 Phone Screen Mirror" "scrcpy"
-  omni_menu_item "9" "📱 Phone Termux SSH" "${PHONE_IP:-unknown}:${PHONE_PORT}"
-  omni_menu_item "l" "💻 Laptop SSH Shell" "${LAPTOP_IP:-unknown}"
-  omni_menu_item "f" "📁 Send File to Device" "omni send"
-  omni_menu_item "n" "🔔 Push Notification" "omni notify"
-  omni_menu_item "y" "🔄 Omni Update & Sync" "omni update"
-  echo ""
-  echo -e "${C_YELLOW}${C_BOLD}  🎛️  WORKSPACE, MEDIA & POWER${C_RESET}"
-  omni_menu_item "j" "🪟 Jump to Window" "Hyprland clients"
-  omni_menu_item "m" "🎵 Media / Volume" "Playerctl & Pipewire"
-  omni_menu_item "e" "⚡ Power Profile" "powerprofilesctl"
-  omni_menu_item "t" "📊 Local System Monitor" "htop / desk-status"
-  omni_menu_item "u" "🎮 NVIDIA GPU Status" "nvidia-smi"
-  omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
-  omni_menu_item "s" "🐚 Local Desktop Shell" "bash"
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
+  omni_menu_item "S" "⚙️  Setup & Reconfigure" "Fleet config"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu back to Shell"
   echo ""
   read -rsn1 -p "Select option [Enter/q to exit]: " choice
@@ -295,14 +320,31 @@ while true; do
 
   case "$choice" in
     ""|q|Q) exit 0 ;;
-    s|S)
+    s)
       echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
       "${SHELL:-bash}" -l
+      ;;
+    S)
+      omni_run_setup
+      # shellcheck source=/dev/null
+      [ -f "$CONFIG_FILE" ] && source "$CONFIG_FILE"
+      ;;
+    w|W)
+      if [ -n "${LAPTOP_MAC:-}" ]; then
+        echo -e "${C_CYAN}[*] Transmitting Wake-on-LAN magic packet to Laptop (${LAPTOP_MAC})...${C_RESET}"
+        omni_wake_mac "$LAPTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent!${C_RESET}" || echo -e "${C_RED}[!] Failed to transmit WoL.${C_RESET}"
+      else
+        echo -e "${C_YELLOW}[!] LAPTOP_MAC is not configured in ~/.config/omni/config.env.${C_RESET}"
+      fi
       ;;
     a|A)
       read -r -p "Prompt ('q' to cancel): " p
       if [ -n "$p" ] && [[ ! "$p" =~ ^[qQ]$ ]]; then
-        if command -v agy >/dev/null 2>&1; then
+        if [ "$OMNI_AI_ENGINE" = "claude" ] && command -v claude >/dev/null 2>&1; then
+          claude -p "$p"
+        elif [ "$OMNI_AI_ENGINE" = "aider" ] && command -v aider >/dev/null 2>&1; then
+          aider --message "$p"
+        elif command -v agy >/dev/null 2>&1; then
           agy "$p"
         elif command -v claude >/dev/null 2>&1; then
           claude -p "$p"
@@ -349,12 +391,21 @@ while true; do
     j|J) desktop_jump_window ;;
     m|M) desktop_media_control ;;
     e|E) desktop_power_profile ;;
-    t|T) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
+    t|T)
+      case "${OMNI_SYS_MONITOR:-htop}" in
+        btop) command -v btop >/dev/null 2>&1 && btop || htop ;;
+        fastfetch) fastfetch ;;
+        desk-status) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
+        *) [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop ;;
+      esac
+      ;;
     u|U) nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader ;;
     k|K) loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true ;;
     z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     *)
-      if ! omni_exec_custom "$choice"; then
+      if omni_exec_custom_tool "$choice"; then
+        :
+      elif ! omni_exec_custom "$choice"; then
         echo "Invalid option: $choice"
         sleep 0.8
       fi
