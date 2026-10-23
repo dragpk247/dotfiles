@@ -120,7 +120,7 @@ while true; do
   echo ""
   echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER & SYNC${C_RESET}"
   omni_menu_item "f" "📁 Send File to Peer" "omni send"
-  omni_menu_item "y" "🔄 Sync Updates from Desk" "sync-down"
+  omni_menu_item "y" "🔄 Sync Updates from Desk" "omni update"
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu back to Shell"
   echo ""
@@ -158,7 +158,7 @@ while true; do
         "$SCRIPT_DIR/omni-send" "$fpath"
       fi
       ;;
-    y|Y) sync-down ;;
+    y|Y) omni_run_update ;;
     z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     *)
       if ! omni_exec_custom "$choice"; then

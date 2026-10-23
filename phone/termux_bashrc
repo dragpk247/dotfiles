@@ -233,7 +233,7 @@ alias lap="lap-agy"
 alias lap-shell="ssh $SSH_OPTS -t jpi@$LAP_IP"
 
 # Config Sync & Termux Setup
-alias sync-down="mkdir -p \${TMPDIR:-\$HOME/.cache} && date +%s > \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && scp $SSH_OPTS jpi@$DESK_IP:~/termux_bashrc ~/.bashrc && source ~/.bashrc && echo 'Config updated from desktop!'"
+alias sync-down="mkdir -p \${TMPDIR:-\$HOME/.cache} && date +%s > \${TMPDIR:-\$HOME/.cache}/.s24_auth_token && scp \$SSH_OPTS jpi@\$DESK_IP:~/termux_bashrc ~/.bashrc && scp \$SSH_OPTS jpi@\$DESK_IP:~/dotfiles/bin/omni* ~/bin/ 2>/dev/null && chmod +x ~/bin/* && source ~/.bashrc && echo '🚀 Config and Omni CLI updated from desktop!'"
 alias sync-up="scp $SSH_OPTS ~/.bashrc jpi@$DESK_IP:~/termux_bashrc && echo 'Config pushed to desktop!'"
 alias setup-keys="mkdir -p ~/.termux && scp $SSH_OPTS jpi@$DESK_IP:~/termux_properties ~/.termux/termux.properties && termux-reload-settings && echo 'Touch keys updated!'"
 

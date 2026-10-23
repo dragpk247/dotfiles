@@ -807,16 +807,24 @@ omni_run_update() {
       ;;
 
     phone)
-      echo -e "${C_CYAN}[1/1] Syncing from Desktop over SSH...${C_RESET}"
-      if command -v sync-down >/dev/null 2>&1; then
-        sync-down
-      elif [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
-        scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" ~/bin/ 2>/dev/null && \
-          chmod +x ~/bin/omni* && \
-          echo -e "${C_GREEN}[✓] Phone updated from Desktop!${C_RESET}" || \
-          echo -e "${C_RED}[!] Download failed.${C_RESET}"
+      echo -e "${C_CYAN}[1/2] Syncing Omni suite from Desktop (${DESKTOP_IP})...${C_RESET}"
+      mkdir -p "$HOME/bin" "$HOME/.config/omni"
+      if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+        if scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" "$HOME/bin/" 2>/dev/null || \
+           scp "${DESKTOP_USER}@${DESKTOP_IP}:~/phone-hub/bin/omni*" "$HOME/bin/" 2>/dev/null; then
+          chmod +x "$HOME/bin/omni"*
+          scp "${DESKTOP_USER}@${DESKTOP_IP}:~/.config/omni/custom_tools.conf" "$HOME/.config/omni/" 2>/dev/null || true
+          echo -e "${C_GREEN}[✓] Omni suite updated from Desktop!${C_RESET}"
+        else
+          echo -e "${C_RED}[!] Download failed. Check SSH permissions to Desktop.${C_RESET}"
+        fi
       else
-        echo -e "${C_RED}[!] Desktop is unreachable.${C_RESET}"
+        echo -e "${C_RED}[!] Desktop ($DESKTOP_IP) is unreachable. Ensure Tailscale is connected.${C_RESET}"
+      fi
+
+      echo -e "${C_CYAN}[2/2] Updating phone shell config...${C_RESET}"
+      if command -v sync-down >/dev/null 2>&1; then
+        sync-down 2>/dev/null || true
       fi
       ;;
   esac
