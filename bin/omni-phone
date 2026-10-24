@@ -120,7 +120,9 @@ while true; do
   echo ""
   echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER & SYNC${C_RESET}"
   omni_menu_item "f" "📁 Send File to Peer" "omni send"
-  omni_menu_item "y" "🔄 Sync Updates from Desk" "omni update"
+  omni_menu_item "p" "🔄 Push / Pull Sync" "Git & Desktop sync"
+  omni_menu_item "y" "⚡ Self-Update" "omni update"
+  omni_menu_item "M" "🧪 Sandbox Playground" "omni-mock"
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu back to Shell"
   echo ""
@@ -129,6 +131,9 @@ while true; do
 
   case "$choice" in
     ""|q|Q) exit 0 ;;
+    M)
+      "$SCRIPT_DIR/omni-mock"
+      ;;
     s|S)
       echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
       "${SHELL:-bash}" -l
@@ -158,6 +163,7 @@ while true; do
         "$SCRIPT_DIR/omni-send" "$fpath"
       fi
       ;;
+    p|P) omni_sync_menu ;;
     y|Y) omni_run_update ;;
     z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     *)

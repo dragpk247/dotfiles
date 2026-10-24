@@ -290,6 +290,7 @@ while true; do
     if [ -n "${LAPTOP_MAC:-}" ]; then
       omni_menu_item "w" "⚡ Wake Laptop (WoL)" "Magic packet to ${LAPTOP_MAC}"
     fi
+    omni_menu_item "P" "🔄 Push / Pull Sync" "Git & Peer sync"
     omni_menu_item "y" "🔄 Omni Update & Sync" "omni update"
     echo ""
   fi
@@ -313,6 +314,7 @@ while true; do
   echo ""
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
   omni_menu_item "S" "⚙️  Setup & Reconfigure" "Fleet config"
+  omni_menu_item "M" "🧪 Sandbox Playground" "omni-mock"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu back to Shell"
   echo ""
   read -rsn1 -p "Select option [Enter/q to exit]: " choice
@@ -320,6 +322,9 @@ while true; do
 
   case "$choice" in
     ""|q|Q) exit 0 ;;
+    M)
+      "$SCRIPT_DIR/omni-mock"
+      ;;
     s)
       echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
       "${SHELL:-bash}" -l
@@ -382,6 +387,7 @@ while true; do
         "$SCRIPT_DIR/omni-notify" "$nmsg"
       fi
       ;;
+    P) omni_sync_menu ;;
     y|Y)
       omni_run_update
       echo -e "${C_CYAN}[*] Pushing phone-hub updates to phone...${C_RESET}"

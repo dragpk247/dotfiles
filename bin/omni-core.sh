@@ -831,3 +831,161 @@ omni_run_update() {
 
   echo -e "\n${C_GREEN}${C_BOLD}[✓] Omni CLI is fully up to date!${C_RESET}"
 }
+
+# ── Unified Git & Peer Sync Submenu ──
+omni_sync_menu() {
+  local dev
+  dev=$(omni_detect_device)
+
+  echo -e "\n${C_CYAN}${C_BOLD}🔄 OMNI PUSH & PULL SYNC (${dev})${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} ⬇️  Git Pull   (Fetch latest updates from GitHub)"
+  echo -e "  ${C_CYAN}[2]${C_RESET} ⬆️  Git Push   (Commit local dotfiles changes & push to GitHub)"
+
+  case "$dev" in
+    phone)
+      echo -e "  ${C_CYAN}[3]${C_RESET} 📥 Pull from Desktop (SCP ~/bin & config from Desktop)"
+      echo -e "  ${C_CYAN}[4]${C_RESET} 📤 Push to Desktop   (SCP phone scripts to Desktop ~/phone-hub/bin)"
+      ;;
+    laptop)
+      echo -e "  ${C_CYAN}[3]${C_RESET} 📥 Pull from Desktop (SCP scripts/configs from Desktop)"
+      echo -e "  ${C_CYAN}[4]${C_RESET} 📤 Push to Desktop   (SCP local scripts to Desktop)"
+      echo -e "  ${C_CYAN}[5]${C_RESET} 📱 Push to Phone     (SCP scripts to Phone ~/bin)"
+      ;;
+    *)
+      echo -e "  ${C_CYAN}[3]${C_RESET} 📱 Push to Phone     (SCP scripts to Phone ~/bin)"
+      echo -e "  ${C_CYAN}[4]${C_RESET} 💻 Push to Laptop    (SCP scripts to Laptop ~/.local/bin)"
+      echo -e "  ${C_CYAN}[5]${C_RESET} 📥 Pull from Phone   (SCP Phone ~/bin to Desktop ~/phone-hub/bin)"
+      ;;
+  esac
+  echo -e "  ${C_DIM}[Enter / q] Cancel back to menu${C_RESET}"
+
+  read -rsn1 -p "Select sync action: " sact
+  echo ""
+
+  case "$sact" in
+    ""|q|Q) return 0 ;;
+    1)
+      echo -e "${C_CYAN}[*] Pulling latest git updates...${C_RESET}"
+      local gdir="$HOME/dotfiles"
+      [ -d "$gdir/.git" ] || gdir="$(dirname "$SCRIPT_DIR")"
+      if [ -d "$gdir/.git" ]; then
+        git -C "$gdir" pull --rebase origin main && \
+          echo -e "${C_GREEN}[✓] Git repository updated successfully!${C_RESET}" || \
+          echo -e "${C_RED}[!] Git pull failed.${C_RESET}"
+      else
+        echo -e "${C_YELLOW}[!] No git repository found at $gdir.${C_RESET}"
+      fi
+      ;;
+    2)
+      echo -e "${C_CYAN}[*] Pushing local changes to Git...${C_RESET}"
+      local gdir="$HOME/dotfiles"
+      [ -d "$gdir/.git" ] || gdir="$(dirname "$SCRIPT_DIR")"
+      if [ -d "$gdir/.git" ]; then
+        read -r -p "Commit message [default: 'omni: sync dotfiles']: " cmsg
+        cmsg="${cmsg:-omni: sync dotfiles}"
+        git -C "$gdir" add -A && \
+        git -C "$gdir" commit -m "$cmsg" 2>/dev/null || true
+        git -C "$gdir" push origin main && \
+          echo -e "${C_GREEN}[✓] Successfully pushed to origin/main!${C_RESET}" || \
+          echo -e "${C_RED}[!] Git push failed.${C_RESET}"
+      else
+        echo -e "${C_YELLOW}[!] No git repository found at $gdir.${C_RESET}"
+      fi
+      ;;
+    3)
+      if [ "$dev" = "phone" ]; then
+        echo -e "${C_CYAN}[*] Pulling latest Omni suite from Desktop (${DESKTOP_IP})...${C_RESET}"
+        mkdir -p "$HOME/bin" "$HOME/.config/omni"
+        if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+          if scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" "$HOME/bin/" 2>/dev/null || \
+             scp "${DESKTOP_USER}@${DESKTOP_IP}:~/phone-hub/bin/omni*" "$HOME/bin/" 2>/dev/null; then
+            chmod +x "$HOME/bin/omni"*
+            scp "${DESKTOP_USER}@${DESKTOP_IP}:~/.config/omni/custom_tools.conf" "$HOME/.config/omni/" 2>/dev/null || true
+            echo -e "${C_GREEN}[✓] Pulled latest Omni suite from Desktop!${C_RESET}"
+          else
+            echo -e "${C_RED}[!] Pull failed. Check SSH permissions to Desktop.${C_RESET}"
+          fi
+        else
+          echo -e "${C_RED}[!] Desktop ($DESKTOP_IP) is unreachable.${C_RESET}"
+        fi
+      elif [ "$dev" = "laptop" ]; then
+        echo -e "${C_CYAN}[*] Pulling latest Omni scripts from Desktop (${DESKTOP_IP})...${C_RESET}"
+        mkdir -p "$HOME/.local/bin"
+        if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+          scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" "$HOME/.local/bin/" && \
+            chmod +x "$HOME/.local/bin/omni"* && \
+            echo -e "${C_GREEN}[✓] Pulled from Desktop!${C_RESET}" || echo -e "${C_RED}[!] Pull failed.${C_RESET}"
+        else
+          echo -e "${C_RED}[!] Desktop unreachable.${C_RESET}"
+        fi
+      else
+        # Desktop: Push to phone
+        echo -e "${C_CYAN}[*] Pushing Omni suite to Phone (${PHONE_IP})...${C_RESET}"
+        if [ -n "$PHONE_IP" ] && omni_is_online "$PHONE_IP"; then
+          scp -P "$PHONE_PORT" -r "$HOME/dotfiles/bin"/omni* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pushed to Phone successfully!${C_RESET}" || \
+            echo -e "${C_RED}[!] Push to phone failed.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Phone ($PHONE_IP) is offline.${C_RESET}"
+        fi
+      fi
+      ;;
+    4)
+      if [ "$dev" = "phone" ]; then
+        echo -e "${C_CYAN}[*] Pushing phone scripts to Desktop (${DESKTOP_IP})...${C_RESET}"
+        if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+          ssh "${DESKTOP_USER}@${DESKTOP_IP}" "mkdir -p ~/phone-hub/bin" 2>/dev/null
+          scp "$HOME/bin"/omni* "${DESKTOP_USER}@${DESKTOP_IP}:~/phone-hub/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pushed to Desktop ~/phone-hub/bin!${C_RESET}" || \
+            echo -e "${C_RED}[!] Push failed.${C_RESET}"
+        else
+          echo -e "${C_RED}[!] Desktop unreachable.${C_RESET}"
+        fi
+      elif [ "$dev" = "laptop" ]; then
+        echo -e "${C_CYAN}[*] Pushing laptop scripts to Desktop (${DESKTOP_IP})...${C_RESET}"
+        if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+          scp "$HOME/.local/bin"/omni* "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pushed to Desktop!${C_RESET}" || \
+            echo -e "${C_RED}[!] Push failed.${C_RESET}"
+        else
+          echo -e "${C_RED}[!] Desktop unreachable.${C_RESET}"
+        fi
+      else
+        # Desktop: Push to laptop
+        echo -e "${C_CYAN}[*] Pushing Omni suite to Laptop (${LAPTOP_IP})...${C_RESET}"
+        if [ -n "$LAPTOP_IP" ] && omni_is_online "$LAPTOP_IP"; then
+          scp -r "$HOME/dotfiles/bin"/omni* "${LAPTOP_USER}@${LAPTOP_IP}:~/.local/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pushed to Laptop!${C_RESET}" || \
+            echo -e "${C_RED}[!] Push failed.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Laptop ($LAPTOP_IP) is offline.${C_RESET}"
+        fi
+      fi
+      ;;
+    5)
+      if [ "$dev" = "laptop" ]; then
+        echo -e "${C_CYAN}[*] Pushing to Phone from Laptop (${PHONE_IP})...${C_RESET}"
+        if [ -n "$PHONE_IP" ] && omni_is_online "$PHONE_IP"; then
+          scp -P "$PHONE_PORT" -r "$HOME/.local/bin"/omni* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pushed to Phone!${C_RESET}" || \
+            echo -e "${C_RED}[!] Push failed.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Phone offline.${C_RESET}"
+        fi
+      elif [ "$dev" = "desktop" ]; then
+        echo -e "${C_CYAN}[*] Pulling Phone bin to Desktop ~/phone-hub/bin...${C_RESET}"
+        if [ -n "$PHONE_IP" ] && omni_is_online "$PHONE_IP"; then
+          mkdir -p "$HOME/phone-hub/bin"
+          scp -P "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}:~/bin/omni*" "$HOME/phone-hub/bin/" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Pulled phone scripts to ~/phone-hub/bin!${C_RESET}" || \
+            echo -e "${C_RED}[!] Pull failed.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Phone offline.${C_RESET}"
+        fi
+      fi
+      ;;
+    *)
+      echo -e "${C_YELLOW}[!] Unknown choice.${C_RESET}"
+      ;;
+  esac
+}

@@ -39,6 +39,7 @@ case "$CURRENT_DEV" in
     ACTIONS["[19] 💻 SSH Shell into Arch Laptop (${LAPTOP_IP:-unknown})"]="omni laptop"
     ACTIONS["[20] 🖥️ SSH Shell into Desktop (${DESKTOP_IP:-unknown})"]="ssh -o ConnectTimeout=3 -t ${DESKTOP_USER}@${DESKTOP_IP}"
     ACTIONS["[21] 🔄 Pull Config Updates (sync-down)"]="sync-down"
+    ACTIONS["[22] 🧪 Sandbox / Mock Playground"]="omni mock"
     ;;
   laptop)
     ACTIONS["[s] 🐚 Local Laptop Shell (${LAPTOP_IP:-127.0.0.1})"]="${SHELL:-bash} -l"
@@ -61,6 +62,7 @@ case "$CURRENT_DEV" in
     ACTIONS["[17] 🎮 View Desktop RTX 5070 Ti GPU"]="omni gpu"
     ACTIONS["[18] 🔒 Lock Desktop Screen"]="omni lock"
     ACTIONS["[19] 🔄 Git Pull Dotfiles"]="omni-laptop"
+    ACTIONS["[20] 🧪 Sandbox / Mock Playground"]="omni mock"
     ;;
   desktop)
     ACTIONS["[s] 🐚 Local Desktop Shell (${DESKTOP_IP:-127.0.0.1})"]="${SHELL:-bash} -l"
@@ -84,6 +86,7 @@ case "$CURRENT_DEV" in
     ACTIONS["[18] 🎮 NVIDIA RTX 5070 Ti Telemetry"]="omni gpu"
     ACTIONS["[19] 🔒 Lock Desktop Screen"]="omni lock"
     ACTIONS["[20] 📤 Push Updates to Phone"]="omni-desktop"
+    ACTIONS["[21] 🧪 Sandbox / Mock Playground"]="omni mock"
     ;;
 esac
 

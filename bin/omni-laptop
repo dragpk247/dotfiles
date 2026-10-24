@@ -88,6 +88,7 @@ while true; do
     omni_menu_item "t" "📊 Desktop Health Monitor" "CPU, RAM, GPU"
     omni_menu_item "u" "🎮 Desktop GPU Monitor" "nvidia-smi"
     omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
+    omni_menu_item "P" "🔄 Push / Pull Sync" "Git & Peer sync"
     omni_menu_item "y" "🔄 Omni Self-Update" "omni update"
     echo ""
   fi
@@ -98,6 +99,7 @@ while true; do
   echo ""
   omni_menu_item "z" "🔍 Fuzzy Action Search" "omni -f"
   omni_menu_item "S" "⚙️  Setup & Reconfigure" "Fleet config"
+  omni_menu_item "M" "🧪 Sandbox Playground" "omni-mock"
   echo -e "  ${C_DIM}[Enter / q]${C_RESET} 🚪 Exit Menu"
   echo ""
   read -rsn1 -p "Select option [Enter/q to exit]: " choice
@@ -105,6 +107,9 @@ while true; do
 
   case "$choice" in
     ""|q|Q) exit 0 ;;
+    M)
+      "$SCRIPT_DIR/omni-mock"
+      ;;
     s)
       echo -e "${C_CYAN}[*] Dropping into interactive local shell...${C_RESET}"
       "${SHELL:-bash}" -l
@@ -157,6 +162,7 @@ while true; do
     t|T) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status" ;;
     u|U) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
     k|K) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
+    P) omni_sync_menu ;;
     y|Y) omni_run_update ;;
     *)
       if omni_exec_custom_tool "$choice"; then
