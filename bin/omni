@@ -26,6 +26,10 @@ case "${1:-}" in
     omni_run_update
     exit 0
     ;;
+  version|-v|--version)
+    omni_show_version
+    exit 0
+    ;;
   sync|push|pull)
     omni_sync_menu
     exit 0
@@ -147,9 +151,10 @@ case "${1:-}" in
     ;;
   help|-h|--help)
     echo "OMNI — Intelligent Multi-Device Command Center (Current: $CURRENT_DEVICE)"
-    echo "Usage: omni [menu|mock|update|send|clip|voice|notify|fzf|setup|--phone|--laptop|--desktop]"
+    echo "Usage: omni [menu|version|mock|update|send|clip|voice|notify|fzf|setup|--phone|--laptop|--desktop]"
     echo ""
     echo "Commands:"
+    echo "  omni version          Display installed version, git commit hash & peer checksums"
     echo "  omni setup            Interactive onboarding, NIC/MAC binding & tool setup"
     echo "  omni mock             Run safe sandbox environment without touching config"
     echo "  omni pair [peer]      Automated passwordless SSH key pairing"

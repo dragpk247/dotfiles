@@ -751,6 +751,70 @@ omni_exec_custom() {
   return 1
 }
 
+# ── Version & Fleet Integrity Inspector ──
+omni_show_version() {
+  local dev
+  dev=$(omni_detect_device)
+  echo -e "${C_CYAN}${C_BOLD}=== OMNI Version & Fleet Sync Inspector ===${C_RESET}\n"
+  echo -e "  ${C_BOLD}Local Device:${C_RESET} ${C_GREEN}$dev ($(hostname 2>/dev/null || echo "device"))${C_RESET}"
+  echo -e "  ${C_BOLD}OMNI Version:${C_RESET} ${C_YELLOW}${OMNI_VERSION}${C_RESET}"
+
+  local gdir="$HOME/dotfiles"
+  [ -d "$gdir/.git" ] || gdir="$(dirname "$SCRIPT_DIR")"
+  if [ -d "$gdir/.git" ]; then
+    local commit_hash commit_date commit_msg
+    commit_hash=$(git -C "$gdir" rev-parse --short HEAD 2>/dev/null || echo "unknown")
+    commit_date=$(git -C "$gdir" log -1 --format="%cd" --date=relative 2>/dev/null || echo "")
+    commit_msg=$(git -C "$gdir" log -1 --format="%s" 2>/dev/null || echo "")
+    echo -e "  ${C_BOLD}Git Commit:${C_RESET}   ${C_CYAN}${commit_hash}${C_RESET} (${commit_date})"
+    echo -e "  ${C_BOLD}Latest Msg:${C_RESET}   ${C_DIM}${commit_msg}${C_RESET}"
+  fi
+
+  local local_core_hash
+  if command -v md5sum >/dev/null 2>&1; then
+    local_core_hash=$(md5sum "$SCRIPT_DIR/omni-core.sh" 2>/dev/null | awk '{print substr($1,1,8)}')
+  elif command -v md5 >/dev/null 2>&1; then
+    local_core_hash=$(md5 -q "$SCRIPT_DIR/omni-core.sh" 2>/dev/null | awk '{print substr($1,1,8)}')
+  fi
+  [ -n "$local_core_hash" ] && echo -e "  ${C_BOLD}Core Hash:${C_RESET}    ${C_GREEN}${local_core_hash}${C_RESET}"
+
+  echo -e "\n${C_BOLD}─── Fleet Peer Sync Check ───${C_RESET}"
+  # Check Phone if on desktop/laptop
+  if [ "$dev" != "phone" ] && [ -n "${PHONE_IP:-}" ] && [ "$PHONE_IP" != "127.0.0.1" ]; then
+    if omni_is_online "$PHONE_IP"; then
+      local phone_hash
+      phone_hash=$(ssh -o ConnectTimeout=2 -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}" "md5sum ~/bin/omni-core.sh 2>/dev/null | awk '{print substr(\$1,1,8)}'" 2>/dev/null)
+      if [ "$phone_hash" = "$local_core_hash" ]; then
+        echo -e "  📱 Phone (${PHONE_IP}):  ${C_GREEN}✓ IN SYNC${C_RESET} (hash: ${phone_hash})"
+      elif [ -n "$phone_hash" ]; then
+        echo -e "  📱 Phone (${PHONE_IP}):  ${C_YELLOW}⚠ OUT OF SYNC${C_RESET} (phone: ${phone_hash} vs local: ${local_core_hash})"
+      else
+        echo -e "  📱 Phone (${PHONE_IP}):  ${C_RED}✗ Unable to check binary hash${C_RESET}"
+      fi
+    else
+      echo -e "  📱 Phone (${PHONE_IP}):  ${C_DIM}offline${C_RESET}"
+    fi
+  fi
+
+  # Check Desktop if on phone/laptop
+  if [ "$dev" != "desktop" ] && [ -n "${DESKTOP_IP:-}" ] && [ "$DESKTOP_IP" != "127.0.0.1" ]; then
+    if omni_is_online "$DESKTOP_IP"; then
+      local desk_hash
+      desk_hash=$(ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "md5sum ~/dotfiles/bin/omni-core.sh 2>/dev/null | awk '{print substr(\$1,1,8)}'" 2>/dev/null)
+      if [ "$desk_hash" = "$local_core_hash" ]; then
+        echo -e "  🖥️  Desktop (${DESKTOP_IP}): ${C_GREEN}✓ IN SYNC${C_RESET} (hash: ${desk_hash})"
+      elif [ -n "$desk_hash" ]; then
+        echo -e "  🖥️  Desktop (${DESKTOP_IP}): ${C_YELLOW}⚠ OUT OF SYNC${C_RESET} (desk: ${desk_hash} vs local: ${local_core_hash})"
+      else
+        echo -e "  🖥️  Desktop (${DESKTOP_IP}): ${C_RED}✗ Unable to check binary hash${C_RESET}"
+      fi
+    else
+      echo -e "  🖥️  Desktop (${DESKTOP_IP}): ${C_DIM}offline${C_RESET}"
+    fi
+  fi
+  echo ""
+}
+
 # ── Built-in Self-Updater ──
 omni_run_update() {
   local dev
