@@ -275,3 +275,37 @@ case "${1:-}" in
     esac
     ;;
 esac
+
+# Resume dispatch
+case "${1:-}" in
+  resume)
+    shift
+    subcmd="${1:-}"
+    shift || true
+    case "$subcmd" in
+      check) exec check-resume "$@" ;;
+      pitch) exec draft-pitch "$@" ;;
+      build) exec build-resume "$@" ;;
+      send)
+        # e.g.: omni resume send java --phone
+        role="${1:-java}"
+        shift || true
+        target="${1:---phone}"
+        case "$role" in
+          java) rpath="$HOME/Documents/resumes/Jordan Isaac/01_Java_FullStack/Jordan_Isaac_Java_FullStack_Resume.pdf" ;;
+          devops) rpath="$HOME/Documents/resumes/Jordan Isaac/02_DevOps_Platform/Jordan_Isaac_DevOps_Platform_Resume.pdf" ;;
+          *) rpath="$HOME/Documents/resumes/Jordan Isaac/03_Software_Engineer_Master/Jordan_Isaac_Resume.pdf" ;;
+        esac
+        exec "$SCRIPT_DIR/omni-send" "$rpath" "$target"
+        ;;
+      *)
+        echo -e "${C_CYAN}Omni Resume Command Hub${C_RESET}"
+        echo "  omni resume check <file.pdf> [--role 'keywords']  (Run pre-flight ATS auditor)"
+        echo "  omni resume pitch <company> <role>                (Generate hiring manager note & LinkedIn links)"
+        echo "  omni resume build <file.html>                     (Compile 1-page PDF + Word .docx)"
+        echo "  omni resume send [java|devops|master] [--phone]   (AirDrop resume instantly to phone/laptop)"
+        exit 0
+        ;;
+    esac
+    ;;
+esac
