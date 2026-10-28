@@ -494,8 +494,14 @@ omni_detect_device() {
     return 0
   fi
 
+  # 1b. WSL (Windows Subsystem for Linux) Check
+  if [ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSL_INTEROP:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
+    echo "wsl"
+    return 0
+  fi
+
   # 2. Hardware MAC Address Match (Authoritative across networks)
-  if [ -n "${DESKTOP_MAC:-}" ] || [ -n "${LAPTOP_MAC:-}" ]; then
+  if [ -n "${DESKTOP_MAC:-}" ] || [ -n "${LAPTOP_MAC:-}" ] || [ -n "${WINDOWS_MAC:-}" ]; then
     local mac_list=""
     for iface_path in /sys/class/net/*; do
       [ -f "$iface_path/address" ] && mac_list="$mac_list $(cat "$iface_path/address" 2>/dev/null | tr '[:upper:]' '[:lower:]')"
@@ -508,6 +514,9 @@ omni_detect_device() {
     fi
     if [ -n "${LAPTOP_MAC:-}" ] && echo "$mac_list" | grep -q "${LAPTOP_MAC,,}"; then
       echo "laptop"; return 0
+    fi
+    if [ -n "${WINDOWS_MAC:-}" ] && echo "$mac_list" | grep -q "${WINDOWS_MAC,,}"; then
+      echo "windows"; return 0
     fi
   fi
 
@@ -532,6 +541,8 @@ omni_detect_device() {
       echo "laptop"; return 0
     elif [ "$current_ts_ip" = "$DESKTOP_IP" ]; then
       echo "desktop"; return 0
+    elif [ -n "${WINDOWS_IP:-}" ] && [ "$current_ts_ip" = "$WINDOWS_IP" ]; then
+      echo "windows"; return 0
     fi
   fi
 
@@ -540,6 +551,9 @@ omni_detect_device() {
   hname=$(hostname 2>/dev/null || echo "")
   if [[ "$hname" =~ (laptop|jordanslaptop|omarchy-laptop) ]]; then
     echo "laptop"
+    return 0
+  elif [[ "$hname" =~ (jordans-pc|windows) ]]; then
+    echo "windows"
     return 0
   fi
 
@@ -580,6 +594,8 @@ omni_get_clipboard() {
     termux-clipboard-get 2>/dev/null || true
   elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste >/dev/null 2>&1; then
     wl-paste 2>/dev/null || true
+  elif command -v powershell.exe >/dev/null 2>&1; then
+    powershell.exe -NoProfile -Command "Get-Clipboard" 2>/dev/null | tr -d '\r' || true
   elif command -v xclip >/dev/null 2>&1; then
     xclip -selection clipboard -o 2>/dev/null || true
   fi
@@ -592,6 +608,8 @@ omni_set_clipboard() {
     echo -n "$text" | termux-clipboard-set 2>/dev/null || true
   elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
     echo -n "$text" | wl-copy 2>/dev/null || true
+  elif command -v clip.exe >/dev/null 2>&1; then
+    echo -n "$text" | clip.exe 2>/dev/null || true
   elif command -v xclip >/dev/null 2>&1; then
     echo -n "$text" | xclip -selection clipboard 2>/dev/null || true
   fi

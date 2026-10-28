@@ -36,16 +36,29 @@ if [ -z "$TARGET" ]; then
     laptop)
       echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (${DESKTOP_DOWNLOADS})"
       echo -e "  ${C_GREEN}[2]${C_RESET} 📱 Phone (${PHONE_DOWNLOADS})"
-      read -r -p "Target [1-2]: " dest_choice
+      echo -e "  ${C_GREEN}[3]${C_RESET} 🪟 Windows PC (${WINDOWS_DOWNLOADS:-C:/Users/.../Downloads})"
+      read -r -p "Target [1-3]: " dest_choice
       [ "$dest_choice" = "1" ] && TARGET="desktop"
       [ "$dest_choice" = "2" ] && TARGET="phone"
+      [ "$dest_choice" = "3" ] && TARGET="windows"
       ;;
     phone)
       echo -e "  ${C_GREEN}[1]${C_RESET} 🖥️  Desktop (${DESKTOP_DOWNLOADS})"
       echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Laptop (${LAPTOP_DOWNLOADS})"
-      read -r -p "Target [1-2]: " dest_choice
+      echo -e "  ${C_GREEN}[3]${C_RESET} 🪟 Windows PC (${WINDOWS_DOWNLOADS:-C:/Users/.../Downloads})"
+      read -r -p "Target [1-3]: " dest_choice
       [ "$dest_choice" = "1" ] && TARGET="desktop"
       [ "$dest_choice" = "2" ] && TARGET="laptop"
+      [ "$dest_choice" = "3" ] && TARGET="windows"
+      ;;
+    desktop|wsl|*)
+      echo -e "  ${C_GREEN}[1]${C_RESET} 📱 Phone (${PHONE_DOWNLOADS})"
+      echo -e "  ${C_GREEN}[2]${C_RESET} 💻 Laptop (${LAPTOP_DOWNLOADS})"
+      echo -e "  ${C_GREEN}[3]${C_RESET} 🪟 Windows PC (${WINDOWS_DOWNLOADS:-C:/Users/.../Downloads})"
+      read -r -p "Target [1-3]: " dest_choice
+      [ "$dest_choice" = "1" ] && TARGET="phone"
+      [ "$dest_choice" = "2" ] && TARGET="laptop"
+      [ "$dest_choice" = "3" ] && TARGET="windows"
       ;;
   esac
 fi
@@ -54,6 +67,7 @@ case "$TARGET" in
   --phone|phone|mobile) DEST="phone" ;;
   --laptop|laptop|lap) DEST="laptop" ;;
   --desktop|desktop|desk) DEST="desktop" ;;
+  --windows|windows|pc|win) DEST="windows" ;;
   *) echo -e "${C_RED}[!] Invalid destination: $TARGET${C_RESET}"; exit 1 ;;
 esac
 
@@ -88,6 +102,16 @@ case "$DEST" in
     scp -r "$ITEM" "${LAPTOP_USER}@${LAPTOP_IP}:${LAPTOP_DOWNLOADS}/" && {
       echo -e "${C_GREEN}[✓] Successfully sent to Laptop!${C_RESET}"
       ssh "${LAPTOP_USER}@${LAPTOP_IP}" "DISPLAY=:0 DBUS_SESSION_BUS_ADDRESS=unix:path=/run/user/1000/bus notify-send 'OMNI File Received' '$BASENAME saved to Downloads' 2>/dev/null" || true
+    }
+    ;;
+  windows)
+    if [ -z "${WINDOWS_IP:-}" ] || ! omni_is_online "$WINDOWS_IP"; then
+      echo -e "${C_RED}[!] Windows PC is unreachable (${WINDOWS_IP:-not configured}).${C_RESET}"
+      exit 1
+    fi
+    win_dest="${WINDOWS_DOWNLOADS:-C:/Users/${WINDOWS_USER:-jpi}/Downloads}"
+    scp -r "$ITEM" "${WINDOWS_USER:-jpi}@${WINDOWS_IP}:${win_dest}/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Windows Downloads!${C_RESET}"
     }
     ;;
 esac

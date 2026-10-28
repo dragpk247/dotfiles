@@ -248,6 +248,14 @@ case "${1:-}" in
   laptop)
     ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}"
     ;;
+  windows|pc)
+    if [ -n "${WINDOWS_IP:-}" ]; then
+      ssh -o ConnectTimeout=3 -t "${WINDOWS_USER:-jpi}@${WINDOWS_IP}"
+    else
+      echo -e "${C_RED}[!] WINDOWS_IP not configured in config.env${C_RESET}"
+      exit 1
+    fi
+    ;;
   mirror)
     adb connect "${PHONE_IP}:5555" 2>/dev/null || true
     scrcpy --stay-awake --turn-screen-off || scrcpy
@@ -259,7 +267,7 @@ case "${1:-}" in
     case "$CURRENT_DEVICE" in
       phone) exec "$SCRIPT_DIR/omni-phone" ;;
       laptop) exec "$SCRIPT_DIR/omni-laptop" ;;
-      desktop) exec "$SCRIPT_DIR/omni-desktop" ;;
+      desktop|wsl|*) exec "$SCRIPT_DIR/omni-desktop" ;;
     esac
     ;;
 esac

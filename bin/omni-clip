@@ -16,7 +16,10 @@ get_local_clip() {
     phone)
       termux-clipboard-get 2>/dev/null || true
       ;;
-    desktop|laptop)
+    wsl)
+      powershell.exe -NoProfile -Command "Get-Clipboard" 2>/dev/null | tr -d '\r' || true
+      ;;
+    desktop|laptop|*)
       wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null || true
       ;;
   esac
@@ -28,7 +31,10 @@ set_local_clip() {
     phone)
       echo -n "$content" | termux-clipboard-set 2>/dev/null || true
       ;;
-    desktop|laptop)
+    wsl)
+      echo -n "$content" | clip.exe 2>/dev/null || true
+      ;;
+    desktop|laptop|*)
       nohup wl-copy "$content" >/dev/null 2>&1 & disown 2>/dev/null || true
       ;;
   esac
@@ -67,6 +73,14 @@ push_to_peer() {
         echo -e "${C_RED}[!] Laptop is offline.${C_RESET}"
       fi
       ;;
+    windows|pc)
+      if [ -n "${WINDOWS_IP:-}" ] && omni_is_online "$WINDOWS_IP"; then
+        echo -n "$content" | ssh "${WINDOWS_USER:-$USER}@${WINDOWS_IP}" "powershell.exe -NoProfile -Command \"Set-Clipboard -Value ([Console]::In.ReadToEnd())\"" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Clipboard pushed to Windows PC!${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Windows PC is offline or WINDOWS_IP not configured.${C_RESET}"
+      fi
+      ;;
   esac
 }
 
@@ -88,6 +102,11 @@ pull_from_peer() {
     laptop)
       if omni_is_online "$LAPTOP_IP"; then
         remote_content=$(ssh "${LAPTOP_USER}@${LAPTOP_IP}" "wl-paste 2>/dev/null || xclip -selection clipboard -o 2>/dev/null" || true)
+      fi
+      ;;
+    windows|pc)
+      if [ -n "${WINDOWS_IP:-}" ] && omni_is_online "$WINDOWS_IP"; then
+        remote_content=$(ssh "${WINDOWS_USER:-$USER}@${WINDOWS_IP}" "powershell.exe -NoProfile -Command \"Get-Clipboard\" 2>/dev/null" | tr -d '\r' || true)
       fi
       ;;
   esac
