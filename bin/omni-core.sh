@@ -494,7 +494,13 @@ omni_detect_device() {
     return 0
   fi
 
-  # 1b. WSL (Windows Subsystem for Linux) Check
+  # 1b. macOS (Darwin) Check
+  if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    echo "mac"
+    return 0
+  fi
+
+  # 1c. WSL (Windows Subsystem for Linux) Check
   if [ -n "${WSL_DISTRO_NAME:-}" ] || [ -n "${WSL_INTEROP:-}" ] || grep -qi microsoft /proc/version 2>/dev/null; then
     echo "wsl"
     return 0
@@ -563,14 +569,22 @@ omni_detect_device() {
 # ── Network Check ──
 omni_is_online() {
   local target_ip="$1"
-  ping -c 1 -W 1 "$target_ip" >/dev/null 2>&1
+  if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    ping -c 1 -W 1000 "$target_ip" >/dev/null 2>&1
+  else
+    ping -c 1 -W 1 "$target_ip" >/dev/null 2>&1
+  fi
 }
 
 # ── Tailscale Ping / Latency ──
 omni_ts_ping() {
   local target_ip="$1"
   local rtt
-  rtt=$(ping -c 1 -W 1 "$target_ip" 2>/dev/null | grep -oE "time=[0-9.]+" | cut -d= -f2)
+  if [ "$(uname -s 2>/dev/null)" = "Darwin" ]; then
+    rtt=$(ping -c 1 -W 1000 "$target_ip" 2>/dev/null | grep -oE "time=[0-9.]+" | cut -d= -f2)
+  else
+    rtt=$(ping -c 1 -W 1 "$target_ip" 2>/dev/null | grep -oE "time=[0-9.]+" | cut -d= -f2)
+  fi
   if [ -n "$rtt" ]; then
     echo "${rtt}ms"
   else
@@ -590,7 +604,9 @@ omni_tmux_badge() {
 
 # ── Universal Clipboard Getter ──
 omni_get_clipboard() {
-  if command -v termux-clipboard-get >/dev/null 2>&1; then
+  if command -v pbpaste >/dev/null 2>&1; then
+    pbpaste 2>/dev/null || true
+  elif command -v termux-clipboard-get >/dev/null 2>&1; then
     termux-clipboard-get 2>/dev/null || true
   elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-paste >/dev/null 2>&1; then
     wl-paste 2>/dev/null || true
@@ -604,7 +620,9 @@ omni_get_clipboard() {
 # ── Universal Clipboard Setter ──
 omni_set_clipboard() {
   local text="$1"
-  if command -v termux-clipboard-set >/dev/null 2>&1; then
+  if command -v pbcopy >/dev/null 2>&1; then
+    echo -n "$text" | pbcopy 2>/dev/null || true
+  elif command -v termux-clipboard-set >/dev/null 2>&1; then
     echo -n "$text" | termux-clipboard-set 2>/dev/null || true
   elif [ -n "${WAYLAND_DISPLAY:-}" ] && command -v wl-copy >/dev/null 2>&1; then
     echo -n "$text" | wl-copy 2>/dev/null || true

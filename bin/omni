@@ -266,7 +266,7 @@ case "${1:-}" in
     fi
     case "$CURRENT_DEVICE" in
       phone) exec "$SCRIPT_DIR/omni-phone" ;;
-      laptop) exec "$SCRIPT_DIR/omni-laptop" ;;
+      laptop|mac) exec "$SCRIPT_DIR/omni-laptop" ;;
       desktop|wsl|*) exec "$SCRIPT_DIR/omni-desktop" ;;
     esac
     ;;

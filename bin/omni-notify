@@ -14,6 +14,9 @@ CURRENT_DEV=$(omni_detect_device)
 
 # 1. Local Notification
 case "$CURRENT_DEV" in
+  mac)
+    osascript -e "display notification \"$MSG\" with title \"$TITLE\"" 2>/dev/null || true
+    ;;
   desktop|laptop)
     notify-send "$TITLE" "$MSG" 2>/dev/null || true
     ;;

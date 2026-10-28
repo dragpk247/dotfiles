@@ -16,6 +16,9 @@ get_local_clip() {
     phone)
       termux-clipboard-get 2>/dev/null || true
       ;;
+    mac)
+      pbpaste 2>/dev/null || true
+      ;;
     wsl)
       powershell.exe -NoProfile -Command "Get-Clipboard" 2>/dev/null | tr -d '\r' || true
       ;;
@@ -30,6 +33,9 @@ set_local_clip() {
   case "$CURRENT_DEV" in
     phone)
       echo -n "$content" | termux-clipboard-set 2>/dev/null || true
+      ;;
+    mac)
+      echo -n "$content" | pbcopy 2>/dev/null || true
       ;;
     wsl)
       echo -n "$content" | clip.exe 2>/dev/null || true
@@ -81,6 +87,14 @@ push_to_peer() {
         echo -e "${C_RED}[!] Windows PC is offline or WINDOWS_IP not configured.${C_RESET}"
       fi
       ;;
+    mac)
+      if [ -n "${MAC_IP:-}" ] && omni_is_online "$MAC_IP"; then
+        echo -n "$content" | ssh "${MAC_USER:-$USER}@${MAC_IP}" "pbcopy" 2>/dev/null && \
+          echo -e "${C_GREEN}[✓] Clipboard pushed to Mac!${C_RESET}"
+      else
+        echo -e "${C_RED}[!] Mac is offline or MAC_IP not configured.${C_RESET}"
+      fi
+      ;;
   esac
 }
 
@@ -107,6 +121,11 @@ pull_from_peer() {
     windows|pc)
       if [ -n "${WINDOWS_IP:-}" ] && omni_is_online "$WINDOWS_IP"; then
         remote_content=$(ssh "${WINDOWS_USER:-$USER}@${WINDOWS_IP}" "powershell.exe -NoProfile -Command \"Get-Clipboard\" 2>/dev/null" | tr -d '\r' || true)
+      fi
+      ;;
+    mac)
+      if [ -n "${MAC_IP:-}" ] && omni_is_online "$MAC_IP"; then
+        remote_content=$(ssh "${MAC_USER:-$USER}@${MAC_IP}" "pbpaste 2>/dev/null" || true)
       fi
       ;;
   esac

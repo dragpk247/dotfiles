@@ -68,6 +68,7 @@ case "$TARGET" in
   --laptop|laptop|lap) DEST="laptop" ;;
   --desktop|desktop|desk) DEST="desktop" ;;
   --windows|windows|pc|win) DEST="windows" ;;
+  --mac|mac|macos|apple) DEST="mac" ;;
   *) echo -e "${C_RED}[!] Invalid destination: $TARGET${C_RESET}"; exit 1 ;;
 esac
 
@@ -112,6 +113,17 @@ case "$DEST" in
     win_dest="${WINDOWS_DOWNLOADS:-C:/Users/${WINDOWS_USER:-jpi}/Downloads}"
     scp -r "$ITEM" "${WINDOWS_USER:-jpi}@${WINDOWS_IP}:${win_dest}/" && {
       echo -e "${C_GREEN}[✓] Successfully sent to Windows Downloads!${C_RESET}"
+    }
+    ;;
+  mac)
+    if [ -z "${MAC_IP:-}" ] || ! omni_is_online "$MAC_IP"; then
+      echo -e "${C_RED}[!] Mac is unreachable (${MAC_IP:-not configured}).${C_RESET}"
+      exit 1
+    fi
+    mac_dest="${MAC_DOWNLOADS:-/Users/${MAC_USER:-$USER}/Downloads}"
+    scp -r "$ITEM" "${MAC_USER:-$USER}@${MAC_IP}:${mac_dest}/" && {
+      echo -e "${C_GREEN}[✓] Successfully sent to Mac Downloads!${C_RESET}"
+      ssh "${MAC_USER:-$USER}@${MAC_IP}" "osascript -e 'display notification \"$BASENAME saved to Downloads\" with title \"OMNI File Received\"' 2>/dev/null" || true
     }
     ;;
 esac
