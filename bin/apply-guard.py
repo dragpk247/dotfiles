@@ -90,14 +90,25 @@ def main():
     log_application(args.company, prof["title"], args.recipient, args.role)
     print(f"\n\033[1;32m[✓] Application logged into tracker:\033[0m {TRACKER_FILE}")
 
-    # 4. Open Default Mail Client if email provided (non-blocking)
+    # 4. Open directly in Gmail or Yahoo Web Compose (Default: Gmail)
     if is_email:
-        mailto = f"mailto:{args.recipient}?subject={urllib.parse.quote(subject)}&body={urllib.parse.quote(body)}"
-        print("\n\033[1;36m[*] Prepared email pre-addressed to recruiter:\033[0m")
+        enc_to = urllib.parse.quote(args.recipient)
+        enc_sub = urllib.parse.quote(subject)
+        enc_body = urllib.parse.quote(body)
+
+        gmail_url = f"https://mail.google.com/mail/?view=cm&fs=1&to={enc_to}&su={enc_sub}&body={enc_body}"
+        yahoo_url = f"https://compose.mail.yahoo.com/?to={enc_to}&subj={enc_sub}&body={enc_body}"
+
+        print("\n\033[1;36m[*] Opening Gmail Compose window with pre-filled pitch...\033[0m")
         print(f"    Recipient: {args.recipient}")
         print(f"    Subject:   {subject}")
+        print(f"\n\033[2mDirect Web Links:\033[0m")
+        print(f"  • Gmail: \033[4m{gmail_url}\033[0m")
+        print(f"  • Yahoo: \033[4m{yahoo_url}\033[0m")
+
         try:
-            subprocess.Popen(["xdg-open", mailto], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            # Opens directly in your default browser (Gmail compose)
+            subprocess.Popen(["xdg-open", gmail_url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         except Exception:
             pass
 
