@@ -9,8 +9,20 @@ source "$SCRIPT_DIR/omni-core.sh"
 ITEM="${1:-}"
 if [ -z "$ITEM" ] || [ "$ITEM" = "-h" ] || [ "$ITEM" = "--help" ]; then
   echo -e "${C_CYAN}Usage:${C_RESET} omni send <file_or_dir> [target]"
-  echo "Targets: --phone, --laptop, --desktop (or leave empty for interactive choice)"
+  echo "Targets: --phone, --laptop, --desktop, --windows, --mac"
+  echo "Ad-Hoc / Non-Fleet:"
+  echo "  omni send <file> --share      (Instant local QR-code / browser download for iOS/Android/PC)"
+  echo "  omni send <file> --public     (Worldwide public HTTPS link via Tailscale Funnel)"
   exit 0
+fi
+
+if [ "$2" = "--share" ] || [ "$2" = "-s" ] || [ "$1" = "--share" ]; then
+  shift
+  exec "$SCRIPT_DIR/omni-share" "$@"
+fi
+
+if [ "$2" = "--public" ] || [ "$2" = "-p" ]; then
+  exec "$SCRIPT_DIR/omni-share" "$ITEM" --public
 fi
 
 if [ ! -e "$ITEM" ]; then

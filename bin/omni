@@ -34,6 +34,10 @@ case "${1:-}" in
     omni_sync_menu
     exit 0
     ;;
+  share)
+    shift
+    exec "$SCRIPT_DIR/omni-share" "$@"
+    ;;
   setup|--setup)
     omni_run_setup
     exit 0
