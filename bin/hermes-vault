@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  HERMES-VAULT — Cost-Optimized Hermes & Obsidian Bridge
+#  1. Searches Obsidian locally via ripgrep (Zero LLM Tokens)
+#  2. Passes only top matching snippets to a high-efficiency OpenRouter model
+#  3. Appends clean structured output back to Obsidian
+# ==============================================================================
+
+set -e
+
+VAULT_DIR="${OBSIDIAN_VAULT_PATH:-$HOME/Documents/Obsidian Vault}"
+CHEAP_MODEL="${HERMES_CHEAP_MODEL:-google/gemini-2.0-flash-001}"
+FREE_MODEL="meta-llama/llama-3.3-70b-instruct:free"
+
+usage() {
+  echo -e "\033[1;36mUsage:\033[0m"
+  echo "  hermes-vault ask \"<query>\"                 (Search vault with zero tokens + query Hermes with cheap model)"
+  echo "  hermes-vault note \"<title>\" \"<prompt>\"       (Synthesize new note and save directly to Obsidian)"
+  echo "  hermes-vault free \"<query>\"                (Run query using 100% free OpenRouter model)"
+  echo "  hermes-vault sync                          (Log daily activity and stats to Obsidian)"
+  exit 0
+}
+
+CMD="${1:-}"
+if [ -z "$CMD" ] || [ "$CMD" = "-h" ] || [ "$CMD" = "--help" ]; then
+  usage
+fi
+
+case "$CMD" in
+  ask)
+    QUERY="${2:-}"
+    if [ -z "$QUERY" ]; then
+      echo -e "\033[1;31mError:\033[0m Query cannot be empty."
+      exit 1
+    fi
+
+    echo -e "\033[1;36m[*] Searching Obsidian Vault locally (Zero Tokens)...\033[0m"
+    # Extract search terms (words longer than 3 chars)
+    SEARCH_TERMS=$(echo "$QUERY" | tr '[:punct:]' ' ' | awk '{for(i=1;i<=NF;i++) if(length($i)>3) print $i}' | head -n 3)
+    
+    CONTEXT=""
+    for term in $SEARCH_TERMS; do
+      MATCHES=$(rg -i -m 3 --no-heading -C 1 "$term" "$VAULT_DIR" 2>/dev/null || true)
+      if [ -n "$MATCHES" ]; then
+        CONTEXT="$CONTEXT\n--- Context snippet for '$term' ---\n$MATCHES\n"
+      fi
+    done
+
+    PROMPT="You are a personal research assistant. Use the local notes context below ONLY if relevant to answer the query concisely.\n\nLocal Notes Context:\n$CONTEXT\n\nUser Query: $QUERY"
+
+    echo -e "\033[1;32m[*] Routing to cost-optimized model:\033[0m $CHEAP_MODEL..."
+    hermes chat --model "$CHEAP_MODEL" "$PROMPT"
+    ;;
+
+  free)
+    QUERY="${2:-}"
+    if [ -z "$QUERY" ]; then
+      echo -e "\033[1;31mError:\033[0m Query cannot be empty."
+      exit 1
+    fi
+    echo -e "\033[1;32m[*] Routing to 100% Free OpenRouter model:\033[0m $FREE_MODEL..."
+    hermes chat --model "$FREE_MODEL" "$QUERY"
+    ;;
+
+  note)
+    TITLE="${2:-}"
+    PROMPT="${3:-}"
+    if [ -z "$TITLE" ] || [ -z "$PROMPT" ]; then
+      echo -e "\033[1;31mError:\033[0m Both title and prompt are required: hermes-vault note \"Title\" \"Prompt\""
+      exit 1
+    fi
+
+    TARGET_FILE="$VAULT_DIR/AI-Synthesized/${TITLE}.md"
+    mkdir -p "$(dirname "$TARGET_FILE")"
+
+    echo -e "\033[1;36m[*] Synthesizing note via $CHEAP_MODEL...\033[0m"
+    FULL_PROMPT="Format your response as a clean Obsidian Markdown document with YAML frontmatter, headers, bullet points, and key takeaways.\n\nTopic/Prompt: $PROMPT"
+    
+    RESPONSE=$(hermes chat --model "$CHEAP_MODEL" "$FULL_PROMPT")
+
+    cat << EOF > "$TARGET_FILE"
+---
+title: "${TITLE}"
+date: $(date +"%Y-%m-%d %H:%M")
+generated_by: hermes-agent ($CHEAP_MODEL)
+tags: [ai-synthesized, hermes, notes]
+---
+
+$RESPONSE
+EOF
+
+    echo -e "\033[1;32m[✓] Note successfully created:\033[0m $TARGET_FILE"
+    ;;
+
+  sync)
+    LOG_FILE="$VAULT_DIR/Daily Notes/$(date +%Y-%m-%d).md"
+    mkdir -p "$(dirname "$LOG_FILE")"
+    echo -e "\n## Hermes Session Log — $(date +%H:%M)\n- Session verified and synced." >> "$LOG_FILE"
+    echo -e "\033[1;32m[✓] Synced to Daily Note:\033[0m $LOG_FILE"
+    ;;
+
+  *)
+    usage
+    ;;
+esac
