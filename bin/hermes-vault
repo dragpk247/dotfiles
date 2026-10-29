@@ -93,6 +93,13 @@ EOF
     ;;
 
   sync)
+    echo -e "\033[1;36m[*] Syncing Obsidian Vault with GitHub...\033[0m"
+    if [ -d "$VAULT_DIR/.git" ]; then
+      cd "$VAULT_DIR"
+      git add -A
+      git commit -m "docs(vault): automated sync $(date +'%Y-%m-%d %H:%M')" || true
+      git push origin main 2>/dev/null && echo -e "\033[1;32m[✓] Obsidian Git push complete!\033[0m" || echo -e "\033[1;33m[!] Git push failed or remote diverged.\033[0m"
+    fi
     LOG_FILE="$VAULT_DIR/Daily Notes/$(date +%Y-%m-%d).md"
     mkdir -p "$(dirname "$LOG_FILE")"
     echo -e "\n## Hermes Session Log — $(date +%H:%M)\n- Session verified and synced." >> "$LOG_FILE"
