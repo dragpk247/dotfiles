@@ -22,6 +22,14 @@ if [ -f "$CONFIG_FILE" ]; then
   source "$CONFIG_FILE"
 fi
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+if [ -f "$SCRIPT_DIR/omni-core.sh" ]; then
+  OMNI_VERSION=$(grep -m1 '^export OMNI_VERSION=' "$SCRIPT_DIR/omni-core.sh" 2>/dev/null | cut -d'"' -f2)
+elif [ -f "$HOME/.local/bin/omni-core.sh" ]; then
+  OMNI_VERSION=$(grep -m1 '^export OMNI_VERSION=' "$HOME/.local/bin/omni-core.sh" 2>/dev/null | cut -d'"' -f2)
+fi
+OMNI_VERSION="${OMNI_VERSION:-v1.4.0}"
+
 PHONE_IP="${PHONE_IP:-127.0.0.1}"
 LAPTOP_IP="${LAPTOP_IP:-127.0.0.1}"
 DESKTOP_IP="${DESKTOP_IP:-127.0.0.1}"
@@ -65,12 +73,12 @@ cols=$(tput cols 2>/dev/null || echo "${COLUMNS:-80}")
 [ -z "$cols" ] || [ "$cols" -le 0 ] && cols=80
 
 if [ "$cols" -ge 65 ]; then
-  echo -e "${C_CYAN}${C_BOLD}  ___  __  __ _   _ ___${C_RESET}   ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET}"
+  echo -e "${C_CYAN}${C_BOLD}  ___  __  __ _   _ ___${C_RESET}   ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION}${C_RESET}"
   echo -e "${C_CYAN}${C_BOLD} / _ \|  \/  | \ | |_ _|${C_RESET}  ${C_DIM}Host:${C_RESET} $(hostname) │ ${C_DIM}Phone:${C_RESET} $p_stat │ ${C_DIM}${PEER_NAME}:${C_RESET} $peer_stat"
   echo -e "${C_CYAN}${C_BOLD}| |_| | |  | | |\  || |${C_RESET}   ${C_BOLD}[Enter]${C_RESET} ➔ Drop directly to Shell │ ${C_BOLD}'menu'${C_RESET} or ${C_BOLD}'m'${C_RESET} ➔ Dashboard"
   echo -e "${C_CYAN}${C_BOLD} \___/|_|  |_|_| \_|___|${C_RESET}"
 else
-  echo -e "${C_CYAN}${C_BOLD}⚡ OMNI System Control${C_RESET} ${C_YELLOW}v1.3.0${C_RESET}"
+  echo -e "${C_CYAN}${C_BOLD}⚡ OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION}${C_RESET}"
   echo -e " ${C_DIM}Host:${C_RESET} $(hostname) │ ${C_DIM}Phone:${C_RESET} $p_stat │ ${C_DIM}${PEER_NAME}:${C_RESET} $peer_stat"
   echo -e " ${C_BOLD}[Enter]${C_RESET} ➔ Shell │ ${C_BOLD}'m'${C_RESET} ➔ Dashboard"
 fi

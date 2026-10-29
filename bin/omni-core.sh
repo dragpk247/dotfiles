@@ -7,6 +7,7 @@
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/omni"
 CONFIG_FILE="$CONFIG_DIR/config.env"
 CUSTOM_TOOLS_FILE="$CONFIG_DIR/custom_tools.conf"
+CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/omni"
 export OMNI_VERSION="v1.4.0"
 
 # Colors
@@ -853,20 +854,32 @@ omni_show_version() {
 
 # ── Built-in Self-Updater ──
 omni_run_update() {
-  local dev
+  local dev quiet=0 check_only=0
   dev=$(omni_detect_device)
-  echo -e "${C_CYAN}${C_BOLD}=== OMNI CLI Self-Updater ($dev) ===${C_RESET}\n"
+
+  for arg in "$@"; do
+    case "$arg" in
+      -q|--quiet|--silent) quiet=1 ;;
+      --check) check_only=1 ;;
+    esac
+  done
+
+  [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}${C_BOLD}=== OMNI CLI Self-Updater ($dev) ===${C_RESET}\n"
 
   case "$dev" in
     desktop)
-      echo -e "${C_CYAN}[1/3] Checking dotfiles git repo...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[1/3] Checking dotfiles git repo...${C_RESET}"
       if [ -d "$HOME/dotfiles/.git" ]; then
-        git -C "$HOME/dotfiles" pull --rebase origin main 2>/dev/null && \
-          echo -e "${C_GREEN}[✓] Dotfiles repository up to date!${C_RESET}" || \
-          echo -e "${C_YELLOW}[!] Git pull skipped or local changes exist.${C_RESET}"
+        if [ "$quiet" -eq 1 ]; then
+          git -C "$HOME/dotfiles" pull --rebase origin main >/dev/null 2>&1 || true
+        else
+          git -C "$HOME/dotfiles" pull --rebase origin main 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Dotfiles repository up to date!${C_RESET}" || \
+            echo -e "${C_YELLOW}[!] Git pull skipped or local changes exist.${C_RESET}"
+        fi
       fi
 
-      echo -e "${C_CYAN}[2/3] Verifying ~/.local/bin symlinks...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[2/3] Verifying ~/.local/bin symlinks...${C_RESET}"
       mkdir -p "$HOME/.local/bin" 2>/dev/null
       for f in "$HOME/dotfiles/bin/omni"*; do
         [ -f "$f" ] || continue
@@ -874,28 +887,34 @@ omni_run_update() {
         bname=$(basename "$f")
         ln -sf "$f" "$HOME/.local/bin/$bname"
       done
-      echo -e "${C_GREEN}[✓] Desktop symlinks verified.${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_GREEN}[✓] Desktop symlinks verified.${C_RESET}"
 
-      echo -e "${C_CYAN}[3/3] Checking phone synchronization...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[3/3] Checking phone synchronization...${C_RESET}"
       if omni_is_online "$PHONE_IP"; then
-        echo -e "${C_CYAN}[*] S24 is online ($PHONE_IP). Pushing updates over SSH...${C_RESET}"
-        scp -P "$PHONE_PORT" -r "$HOME/dotfiles/bin"/omni* "${PHONE_USER}@${PHONE_IP}:~/bin/" 2>/dev/null && \
-          echo -e "${C_GREEN}[✓] Phone successfully synced!${C_RESET}" || \
-          echo -e "${C_YELLOW}[!] Phone sync failed (check SSH key/port).${C_RESET}"
+        [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[*] S24 is online ($PHONE_IP). Pushing updates over SSH...${C_RESET}"
+        if scp -P "$PHONE_PORT" -r "$HOME/dotfiles/bin"/omni* "${PHONE_USER}@${PHONE_IP}:~/bin/" >/dev/null 2>&1; then
+          [ "$quiet" -eq 0 ] && echo -e "${C_GREEN}[✓] Phone successfully synced!${C_RESET}"
+        else
+          [ "$quiet" -eq 0 ] && echo -e "${C_YELLOW}[!] Phone sync failed (check SSH key/port).${C_RESET}"
+        fi
       else
-        echo -e "${C_DIM}[-] S24 Phone is currently offline. Skipping push.${C_RESET}"
+        [ "$quiet" -eq 0 ] && echo -e "${C_DIM}[-] S24 Phone is currently offline. Skipping push.${C_RESET}"
       fi
       ;;
 
     laptop)
-      echo -e "${C_CYAN}[1/2] Pulling latest dotfiles from Git...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[1/2] Pulling latest dotfiles from Git...${C_RESET}"
       if [ -d "$HOME/dotfiles/.git" ]; then
-        cd "$HOME/dotfiles" && git pull --rebase origin main && \
-          echo -e "${C_GREEN}[✓] Dotfiles updated!${C_RESET}" || \
-          echo -e "${C_RED}[!] Git pull failed.${C_RESET}"
+        if [ "$quiet" -eq 1 ]; then
+          git -C "$HOME/dotfiles" pull --rebase origin main >/dev/null 2>&1 || true
+        else
+          git -C "$HOME/dotfiles" pull --rebase origin main 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Dotfiles updated!${C_RESET}" || \
+            echo -e "${C_RED}[!] Git pull failed.${C_RESET}"
+        fi
       fi
 
-      echo -e "${C_CYAN}[2/2] Updating ~/.local/bin symlinks...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[2/2] Updating ~/.local/bin symlinks...${C_RESET}"
       mkdir -p "$HOME/.local/bin" 2>/dev/null
       for f in "$HOME/dotfiles/bin/omni"*; do
         [ -f "$f" ] || continue
@@ -903,33 +922,37 @@ omni_run_update() {
         bname=$(basename "$f")
         ln -sf "$f" "$HOME/.local/bin/$bname"
       done
-      echo -e "${C_GREEN}[✓] Laptop symlinks updated.${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_GREEN}[✓] Laptop symlinks updated.${C_RESET}"
       ;;
 
     phone)
-      echo -e "${C_CYAN}[1/2] Syncing Omni suite from Desktop (${DESKTOP_IP})...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[1/2] Syncing Omni suite from Desktop (${DESKTOP_IP})...${C_RESET}"
       mkdir -p "$HOME/bin" "$HOME/.config/omni"
       if [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
-        if scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" "$HOME/bin/" 2>/dev/null || \
-           scp "${DESKTOP_USER}@${DESKTOP_IP}:~/phone-hub/bin/omni*" "$HOME/bin/" 2>/dev/null; then
+        if scp "${DESKTOP_USER}@${DESKTOP_IP}:~/dotfiles/bin/omni*" "$HOME/bin/" >/dev/null 2>&1 || \
+           scp "${DESKTOP_USER}@${DESKTOP_IP}:~/phone-hub/bin/omni*" "$HOME/bin/" >/dev/null 2>&1; then
           chmod +x "$HOME/bin/omni"*
-          scp "${DESKTOP_USER}@${DESKTOP_IP}:~/.config/omni/custom_tools.conf" "$HOME/.config/omni/" 2>/dev/null || true
-          echo -e "${C_GREEN}[✓] Omni suite updated from Desktop!${C_RESET}"
+          scp "${DESKTOP_USER}@${DESKTOP_IP}:~/.config/omni/custom_tools.conf" "$HOME/.config/omni/" >/dev/null 2>&1 || true
+          [ "$quiet" -eq 0 ] && echo -e "${C_GREEN}[✓] Omni suite updated from Desktop!${C_RESET}"
         else
-          echo -e "${C_RED}[!] Download failed. Check SSH permissions to Desktop.${C_RESET}"
+          [ "$quiet" -eq 0 ] && echo -e "${C_RED}[!] Download failed. Check SSH permissions to Desktop.${C_RESET}"
         fi
       else
-        echo -e "${C_RED}[!] Desktop ($DESKTOP_IP) is unreachable. Ensure Tailscale is connected.${C_RESET}"
+        [ "$quiet" -eq 0 ] && echo -e "${C_RED}[!] Desktop ($DESKTOP_IP) is unreachable. Ensure Tailscale is connected.${C_RESET}"
       fi
 
-      echo -e "${C_CYAN}[2/2] Updating phone shell config...${C_RESET}"
+      [ "$quiet" -eq 0 ] && echo -e "${C_CYAN}[2/2] Updating phone shell config...${C_RESET}"
       if command -v sync-down >/dev/null 2>&1; then
-        sync-down 2>/dev/null || true
+        sync-down >/dev/null 2>&1 || true
       fi
       ;;
   esac
 
-  echo -e "\n${C_GREEN}${C_BOLD}[✓] Omni CLI is fully up to date!${C_RESET}"
+  # Save timestamp of last successful update run
+  mkdir -p "$CACHE_DIR" 2>/dev/null
+  date +%s > "$CACHE_DIR/last_update_ts" 2>/dev/null || true
+
+  [ "$quiet" -eq 0 ] && echo -e "\n${C_GREEN}${C_BOLD}[✓] Omni CLI is fully up to date!${C_RESET}"
 }
 
 # ── Unified Git & Peer Sync Submenu ──

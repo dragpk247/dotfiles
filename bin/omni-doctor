@@ -1,0 +1,113 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI DOCTOR — Comprehensive Diagnostics & Health Check Engine
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+
+echo -e "${C_CYAN}${C_BOLD}"
+cat << "BANNER"
+  ___  __  __ _   _ ___   ____   ___   ____ _____ ___  ____  
+ / _ \|  \/  | \ | |_ _| |  _ \ / _ \ / ___|_   _/ _ \|  _ \ 
+| | | | |\/| |  \| || |  | | | | | | | |     | || | | | |_) |
+| |_| | |  | | |\  || |  | |_| | |_| | |___  | || |_| |  _ < 
+ \___/|_|  |_|_| \_|___| |____/ \___/ \____| |_| \___/|_| \_\
+BANNER
+echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e " ${C_BOLD}Fleet Connectivity, SSH Keys & Toolchain Diagnostic${C_RESET} (${C_CYAN}$CURRENT_DEV${C_RESET})"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+
+check_mark="${C_GREEN}[✓]${C_RESET}"
+cross_mark="${C_RED}[✗]${C_RESET}"
+warn_mark="${C_YELLOW}[!]${C_RESET}"
+
+# 1. Config & Identity Check
+echo -e "${C_BOLD}1. Configuration & Storage${C_RESET}"
+if [ -f "$CONFIG_FILE" ]; then
+  echo -e "  $check_mark Config file found: $CONFIG_FILE"
+else
+  echo -e "  $cross_mark Missing config file: $CONFIG_FILE (Run 'omni setup')"
+fi
+
+if [ -f "$CUSTOM_TOOLS_FILE" ]; then
+  echo -e "  $check_mark Custom tools registered: $(grep -c "^[^#]" "$CUSTOM_TOOLS_FILE" 2>/dev/null || echo 0) tools"
+else
+  echo -e "  $warn_mark No custom tools file ($CUSTOM_TOOLS_FILE)"
+fi
+
+# 2. Network & Tailscale Mesh
+echo -e "\n${C_BOLD}2. Tailscale Mesh Network${C_RESET}"
+if command -v tailscale >/dev/null 2>&1; then
+  TS_IP=$(tailscale ip -4 2>/dev/null || echo "")
+  if [ -n "$TS_IP" ]; then
+    echo -e "  $check_mark Tailscale active. Local Mesh IP: ${C_CYAN}$TS_IP${C_RESET}"
+  else
+    echo -e "  $warn_mark Tailscale daemon not logged in or running."
+  fi
+else
+  echo -e "  $warn_mark Tailscale CLI not installed locally."
+fi
+
+# 3. Peer Reachability & SSH Keys
+echo -e "\n${C_BOLD}3. Multi-Device Fleet Mesh Reachability${C_RESET}"
+
+test_peer() {
+  local name="$1"
+  local user="$2"
+  local ip="$3"
+  local port="${4:-22}"
+
+  if [ -z "$ip" ]; then
+    echo -e "  $warn_mark $name: No IP configured in config.env"
+    return
+  fi
+
+  if omni_is_online "$ip"; then
+    local ping_time
+    ping_time=$(omni_ts_ping "$ip")
+    # Test SSH handshake
+    if ssh -p "$port" -o ConnectTimeout=2 -o BatchMode=yes "${user}@${ip}" "true" 2>/dev/null; then
+      echo -e "  $check_mark $name ($ip:$port): ${C_GREEN}Online & SSH Key Authenticated${C_RESET} ($ping_time)"
+    else
+      echo -e "  $warn_mark $name ($ip:$port): Ping OK ($ping_time) but ${C_YELLOW}SSH Key not authorized${C_RESET} (Run: 'omni pair $name')"
+    fi
+  else
+    echo -e "  $cross_mark $name ($ip:$port): ${C_RED}Offline / Unreachable${C_RESET}"
+  fi
+}
+
+[ "$CURRENT_DEV" != "desktop" ] && test_peer "Desktop" "$DESKTOP_USER" "$DESKTOP_IP" "22"
+[ "$CURRENT_DEV" != "laptop" ]  && test_peer "Laptop" "$LAPTOP_USER" "$LAPTOP_IP" "22"
+[ "$CURRENT_DEV" != "phone" ]   && test_peer "S24 Phone" "$PHONE_USER" "$PHONE_IP" "${PHONE_PORT:-8022}"
+
+# 4. Local Tools & Dependencies
+echo -e "\n${C_BOLD}4. Local System Toolchain & CLI Helpers${C_RESET}"
+tools=(ssh scp git fzf)
+[ "$CURRENT_DEV" = "phone" ] && tools+=(termux-api termux-vibrate termux-notification termux-clipboard-get jq)
+[ "$CURRENT_DEV" = "desktop" ] && tools+=(wl-paste hyprctl playerctl fastfetch agy)
+[ "$CURRENT_DEV" = "laptop" ] && tools+=(wl-paste playerctl powerprofilesctl)
+
+for t in "${tools[@]}"; do
+  if command -v "$t" >/dev/null 2>&1; then
+    echo -e "  $check_mark Tool ready: $t"
+  else
+    echo -e "  $warn_mark Tool missing: $t"
+  fi
+done
+
+echo -e "\n${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " nav_act
+echo ""
+
+case "$nav_act" in
+  b|B)
+    exec omni
+    ;;
+  *)
+    exit 0
+    ;;
+esac

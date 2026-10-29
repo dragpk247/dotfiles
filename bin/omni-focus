@@ -1,0 +1,90 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI FOCUS — Fleet-Wide Deep Work & Distraction Shield
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+FOCUS_STATE_FILE="${XDG_STATE_HOME:-$HOME/.local/state}/omni/focus_mode.active"
+mkdir -p "$(dirname "$FOCUS_STATE_FILE")" 2>/dev/null
+
+echo -e "${C_CYAN}${C_BOLD}"
+cat << "BANNER"
+  ___  __  __ _   _ ___   _____ ___   ____ _   _ ____  
+ / _ \|  \/  | \ | |_ _| |  ___/ _ \ / ___| | | / ___| 
+| | | | |\/| |  \| || |  | |_ | | | | |   | | | \___ \ 
+| |_| | |  | | |\  || |  |  _|| |_| | |___| |_| |___) |
+ \___/|_|  |_|_| \_|___| |_|   \___/ \____|\___/|____/ 
+BANNER
+echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e " ${C_BOLD}Fleet Focus Mode & Deep Work Activation Shield${C_RESET}"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+
+if [ -f "$FOCUS_STATE_FILE" ]; then
+  echo -e "Current Status: ${C_GREEN}${C_BOLD}ACTIVE (Deep Work Shield ON)${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 🔓 Deactivate Focus Mode (Restore normal notifications & balanced power)"
+else
+  echo -e "Current Status: ${C_YELLOW}${C_BOLD}INACTIVE (Normal Mode)${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 🚀 Activate Fleet Focus Mode (DND, performance mode, distraction mute)"
+fi
+echo -e "  ${C_CYAN}[b]${C_RESET} 🔙 Back to OMNI Menu"
+echo -e "  ${C_CYAN}[q]${C_RESET} 🚪 Quit to Shell"
+echo ""
+
+read -rsn1 -p "Select option: " f_opt
+echo ""
+
+case "$f_opt" in
+  b|B) exec omni ;;
+  ""|q|Q) exit 0 ;;
+  1)
+    if [ -f "$FOCUS_STATE_FILE" ]; then
+      # Turn off focus
+      rm -f "$FOCUS_STATE_FILE"
+      echo -e "${C_CYAN}[*] Deactivating Focus Mode...${C_RESET}"
+      
+      # 1. Restore local desktop notifications
+      command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused false
+      command -v swaync-client >/dev/null 2>&1 && swaync-client -d off 2>/dev/null || true
+      command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set balanced 2>/dev/null || true
+      
+      # 2. Remote restore on desktop if on mobile
+      if [ "$CURRENT_DEV" != "desktop" ] && omni_is_online "$DESKTOP_IP"; then
+        ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "swaync-client -d off 2>/dev/null; dunstctl set-paused false 2>/dev/null; powerprofilesctl set balanced 2>/dev/null" || true
+      fi
+      
+      echo -e "${C_GREEN}[✓] Fleet Focus Mode deactivated. Normal workspace restored.${C_RESET}"
+      "$SCRIPT_DIR/omni-notify" "Fleet Focus Mode deactivated. Normal operations resumed." "OMNI Focus"
+    else
+      # Turn on focus
+      touch "$FOCUS_STATE_FILE"
+      echo -e "${C_CYAN}[*] Activating Fleet Focus Mode...${C_RESET}"
+      
+      # 1. Local mute & performance
+      command -v dunstctl >/dev/null 2>&1 && dunstctl set-paused true
+      command -v swaync-client >/dev/null 2>&1 && swaync-client -d on 2>/dev/null || true
+      command -v powerprofilesctl >/dev/null 2>&1 && powerprofilesctl set performance 2>/dev/null || true
+      
+      # 2. Remote activate on desktop if on mobile
+      if [ "$CURRENT_DEV" != "desktop" ] && omni_is_online "$DESKTOP_IP"; then
+        ssh -o ConnectTimeout=2 "${DESKTOP_USER}@${DESKTOP_IP}" "swaync-client -d on 2>/dev/null; dunstctl set-paused true 2>/dev/null; powerprofilesctl set performance 2>/dev/null" || true
+      fi
+      
+      echo -e "${C_GREEN}[✓] Fleet Focus Mode ACTIVATED! Distractions muted & power set to performance.${C_RESET}"
+      "$SCRIPT_DIR/omni-notify" "Fleet Focus Mode ACTIVATED. Deep work session initiated." "OMNI Focus"
+    fi
+    ;;
+esac
+
+echo ""
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " nav_act
+echo ""
+
+case "$nav_act" in
+  b|B) exec omni ;;
+  *) exit 0 ;;
+esac

@@ -90,6 +90,8 @@ while true; do
     omni_menu_item "u" "🎮 Desktop GPU Monitor" "nvidia-smi"
     omni_menu_item "k" "🔒 Lock Desktop Screen" "loginctl"
     omni_menu_item "P" "🔄 Push / Pull Sync" "Git & Peer sync"
+    omni_menu_item "H" "🌐 Session Handoff" "omni handoff"
+    omni_menu_item "D" "🩺 Omni Doctor" "System diagnostics"
     omni_menu_item "y" "🔄 Omni Self-Update" "omni update"
     echo ""
   fi
@@ -165,6 +167,8 @@ while true; do
     u|U) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
     k|K) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true" && echo -e "${C_GREEN}[✓] Desktop locked.${C_RESET}" ;;
     P) omni_sync_menu ;;
+    H) "$SCRIPT_DIR/omni-handoff" ;;
+    D) "$SCRIPT_DIR/omni-doctor" ;;
     y|Y) omni_run_update ;;
     *)
       if omni_exec_custom_tool "$choice"; then

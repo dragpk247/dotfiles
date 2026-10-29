@@ -1,0 +1,112 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI FIX — Automated Fleet Self-Healing & Repair Tool
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+
+echo -e "${C_CYAN}${C_BOLD}"
+cat << "BANNER"
+  ___  __  __ _   _ ___   _____ _____  __
+ / _ \|  \/  | \ | |_ _| |  ___|_ _\ \/ /
+| | | | |\/| |  \| || |  | |_   | | \  / 
+| |_| | |  | | |\  || |  |  _|  | | /  \ 
+ \___/|_|  |_|_| \_|___| |_|   |___/_/\_\
+BANNER
+echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e " ${C_BOLD}Fleet Self-Healing & Automated Repair Engine${C_RESET} (${C_CYAN}$CURRENT_DEV${C_RESET})"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+
+# 1. Fix Broken Symlinks in ~/.local/bin
+echo -e "${C_CYAN}[1/5] Verifying & repairing ~/.local/bin symlinks...${C_RESET}"
+mkdir -p "$HOME/.local/bin" 2>/dev/null
+for f in "$HOME/dotfiles/bin/omni"*; do
+  [ -f "$f" ] || continue
+  chmod +x "$f"
+  bname=$(basename "$f")
+  target="$HOME/.local/bin/$bname"
+  if [ ! -L "$target" ] || [ ! -e "$target" ]; then
+    ln -sf "$f" "$target"
+    echo -e "  ${C_GREEN}[✓] Repaired symlink:${C_RESET} $bname"
+  fi
+done
+echo -e "  ${C_GREEN}[✓] Executables & symlinks synchronized.${C_RESET}"
+
+# 2. Fix Zombie Clipboard / Wayland Hangs
+echo -e "\n${C_CYAN}[2/5] Checking for stuck clipboard / sync processes...${C_RESET}"
+if command -v killall >/dev/null 2>&1; then
+  # Clear any hung wl-paste or stale tailscale subshells
+  zombie_count=$(pgrep -f "wl-paste --watch" | wc -l 2>/dev/null || echo 0)
+  if [ "$zombie_count" -gt 3 ]; then
+    killall wl-paste 2>/dev/null || true
+    echo -e "  ${C_YELLOW}[!] Cleared $zombie_count runaway wl-paste watcher processes.${C_RESET}"
+  else
+    echo -e "  ${C_GREEN}[✓] Clipboard processes normal.${C_RESET}"
+  fi
+else
+  echo -e "  ${C_DIM}[-] Skipping process check (killall unavailable).${C_RESET}"
+fi
+
+# 3. Check & Repair Tailscale Mesh
+echo -e "\n${C_CYAN}[3/5] Inspecting Tailscale daemon & mesh routing...${C_RESET}"
+if command -v tailscale >/dev/null 2>&1; then
+  if ! tailscale ip -4 >/dev/null 2>&1; then
+    echo -e "  ${C_YELLOW}[!] Tailscale down. Attempting reconnection...${C_RESET}"
+    tailscale up --accept-routes 2>/dev/null || true
+    echo -e "  ${C_GREEN}[✓] Reconnection attempt completed.${C_RESET}"
+  else
+    echo -e "  ${C_GREEN}[✓] Tailscale active ($(tailscale ip -4 2>/dev/null || echo "")).${C_RESET}"
+  fi
+else
+  echo -e "  ${C_DIM}[-] Tailscale not installed locally.${C_RESET}"
+fi
+
+# 4. Repair SSH Key Pairing to Peers
+echo -e "\n${C_CYAN}[4/5] Testing and verifying peer SSH handshakes...${C_RESET}"
+
+fix_peer_ssh() {
+  local name="$1"
+  local user="$2"
+  local ip="$3"
+  local port="${4:-22}"
+
+  [ -z "$ip" ] && return 0
+  if omni_is_online "$ip"; then
+    if ! ssh -p "$port" -o ConnectTimeout=2 -o BatchMode=yes "${user}@${ip}" "true" 2>/dev/null; then
+      echo -e "  ${C_YELLOW}[!] $name ($ip:$port) SSH authentication failed.${C_RESET}"
+      read -r -p "  Authorize your public key to $name now? (y/N): " do_pair
+      if [[ "$do_pair" =~ ^[Yy]$ ]]; then
+        omni_pair_device "$user" "$ip" "$port"
+      fi
+    else
+      echo -e "  ${C_GREEN}[✓] $name SSH key authenticated.${C_RESET}"
+    fi
+  else
+    echo -e "  ${C_DIM}[-] $name ($ip) is offline. Skipping.${C_RESET}"
+  fi
+}
+
+[ "$CURRENT_DEV" != "desktop" ] && fix_peer_ssh "Desktop" "$DESKTOP_USER" "$DESKTOP_IP" "22"
+[ "$CURRENT_DEV" != "laptop" ]  && fix_peer_ssh "Laptop" "$LAPTOP_USER" "$LAPTOP_IP" "22"
+[ "$CURRENT_DEV" != "phone" ]   && fix_peer_ssh "S24 Phone" "$PHONE_USER" "$PHONE_IP" "${PHONE_PORT:-8022}"
+
+# 5. Config File & Permission Lockdown
+echo -e "\n${C_CYAN}[5/5] Enforcing 0600 file security permissions...${C_RESET}"
+if [ -f "$CONFIG_FILE" ]; then
+  chmod 600 "$CONFIG_FILE" 2>/dev/null
+  echo -e "  ${C_GREEN}[✓] Locked permissions on $CONFIG_FILE (0600).${C_RESET}"
+fi
+
+echo -e "\n${C_GREEN}${C_BOLD}[✓] Fleet self-healing routines completed!${C_RESET}"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " nav_act
+echo ""
+
+case "$nav_act" in
+  b|B) exec omni ;;
+  *) exit 0 ;;
+esac

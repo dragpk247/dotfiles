@@ -1,0 +1,76 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI SNIPPETS — Fuzzy Searchable Action & Command Runner Across Fleet
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+SNIPPETS_FILE="${XDG_CONFIG_HOME:-$HOME/.config}/omni/snippets.conf"
+
+# Seed default snippets if file does not exist
+if [ ! -f "$SNIPPETS_FILE" ]; then
+  mkdir -p "$(dirname "$SNIPPETS_FILE")"
+  cat << 'SEEDS' > "$SNIPPETS_FILE"
+# OMNI Custom Fleet Snippets (Format: Key | Description | Command)
+dprune   | 🐳 Docker System Clean        | docker system prune -af
+cldown   | 📥 Sync Down Dotfiles Suite   | sync-down
+rebar    | 🔄 Restart Omarchy Desktop Bar | killall omarchy-shell 2>/dev/null; omarchy-shell &
+graphast | 🧠 Full Graphify Rebuild      | graphify update .
+deskmon  | 📊 Launch Desktop Monitor     | htop
+ipinfo   | 🌐 Show Network IP & Interfaces| ip -br a
+lockall  | 🔒 Lock Session Immediately   | loginctl lock-session
+SEEDS
+fi
+
+echo -e "${C_CYAN}${C_BOLD}"
+cat << "BANNER"
+  ___  __  __ _   _ ___   ____  _   _ ___ ____  ____  _____ _____ ____  
+ / _ \|  \/  | \ | |_ _| / ___|| \ | |_ _|  _ \|  _ \| ____|_   _/ ___| 
+| | | | |\/| |  \| || |  \___ \|  \| || || |_) | |_) |  _|   | | \___ \ 
+| |_| | |  | | |\  || |   ___) | |\  || ||  __/|  __/| |___  | |  ___) |
+ \___/|_|  |_|_| \_|___| |____/|_| \_|___|_|   |_|   |_____| |_| |____/ 
+BANNER
+echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e " ${C_BOLD}Fleet Action & Snippet Runner (Search with fzf)${C_RESET}"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+
+if ! command -v fzf >/dev/null 2>&1; then
+  echo -e "${C_RED}[!] fzf is required for omni-snippets.${C_RESET}"
+  exit 1
+fi
+
+chosen=$(grep -v "^#" "$SNIPPETS_FILE" | grep "|" | fzf --height=60% --reverse --prompt="⚡ Select Snippet (ESC to cancel) > ")
+
+if [ -z "$chosen" ]; then
+  echo -e "${C_DIM}No snippet selected.${C_RESET}"
+  echo ""
+  echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+  read -rsn1 -p "Select action: " nav_act
+  echo ""
+  [[ "$nav_act" =~ ^[bB]$ ]] && exec omni
+  exit 0
+fi
+
+s_key=$(echo "$chosen" | cut -d'|' -f1 | xargs)
+s_desc=$(echo "$chosen" | cut -d'|' -f2 | xargs)
+s_cmd=$(echo "$chosen" | cut -d'|' -f3- | sed 's/^[ \t]*//')
+
+echo -e "\n${C_BOLD}Selected Snippet:${C_RESET} ${C_CYAN}$s_desc${C_RESET}"
+echo -e "Command: ${C_YELLOW}$s_cmd${C_RESET}\n"
+read -r -p "Execute this snippet now? (Y/n): " confirm
+if [[ ! "$confirm" =~ ^[Nn]$ ]]; then
+  echo -e "${C_CYAN}[*] Executing: $s_cmd${C_RESET}\n"
+  eval "$s_cmd"
+fi
+
+echo ""
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " nav_act
+echo ""
+
+case "$nav_act" in
+  b|B) exec omni ;;
+  *) exit 0 ;;
+esac

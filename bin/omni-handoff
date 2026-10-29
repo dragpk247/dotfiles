@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI HANDOFF — Follow-Me Session & Context Migration Bridge
+#  Moves active URLs, browser tabs, and tmux workspaces across devices
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEV=$(omni_detect_device)
+
+echo -e "${C_CYAN}${C_BOLD}"
+cat << "BANNER"
+  ___  __  __ _   _ ___   _   _    _    _   _ ____   ___  _____ _____ 
+ / _ \|  \/  | \ | |_ _| | | | |  / \  | \ | |  _ \ / _ \|  ___|  ___|
+| | | | |\/| |  \| || |  | |_| | / _ \ |  \| | | | | | | | |_  | |_   
+| |_| | |  | | |\  || |  |  _  |/ ___ \| |\  | |_| | |_| |  _| |  _|  
+ \___/|_|  |_|_| \_|___| |_| |_/_/   \_\_| \_|____/ \___/|_|   |_|    
+BANNER
+echo -e "${C_RESET}${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}"
+echo -e " ${C_BOLD}Follow-Me Session & URL Context Handoff${C_RESET} (${C_CYAN}$CURRENT_DEV${C_RESET})"
+echo -e "${C_DIM}─────────────────────────────────────────────────────────────────${C_RESET}\n"
+
+echo -e "Select handoff action:"
+echo -e "  ${C_CYAN}[1]${C_RESET} 🌐 Handoff Active Browser URL (Send current link to Peer)"
+echo -e "  ${C_CYAN}[2]${C_RESET} 🖥️  Handoff Terminal / Tmux Context to Peer"
+echo -e "  ${C_CYAN}[3]${C_RESET} 📋 Handoff Live Clipboard & Open Peer Workspace"
+echo -e "  ${C_CYAN}[b]${C_RESET} 🔙 Back to OMNI Menu"
+echo -e "  ${C_CYAN}[q]${C_RESET} 🚪 Quit to Shell"
+echo ""
+
+read -rsn1 -p "Select option: " h_opt
+echo ""
+
+case "$h_opt" in
+  b|B) exec omni ;;
+  ""|q|Q) exit 0 ;;
+  1)
+    echo -e "${C_CYAN}[*] URL Handoff:${C_RESET}"
+    clip_url=$(omni_get_clipboard)
+    read -r -p "Enter URL to open on peer (Press Enter to use clipboard: '$clip_url'): " target_url
+    target_url="${target_url:-$clip_url}"
+    if [ -z "$target_url" ]; then
+      echo -e "${C_YELLOW}[!] No URL provided.${C_RESET}"
+      exit 1
+    fi
+
+    echo -e "Target Device: [1] Phone  [2] Desktop  [3] Laptop"
+    read -rsn1 -p "Select peer: " p_choice
+    echo ""
+    case "$p_choice" in
+      1)
+        if omni_is_online "$PHONE_IP"; then
+          ssh -p "$PHONE_PORT" -o ConnectTimeout=3 "${PHONE_USER}@${PHONE_IP}" "termux-open-url '$target_url'" 2>/dev/null && \
+            echo -e "${C_GREEN}[✓] Opened $target_url on S24 Phone!${C_RESET}" || echo -e "${C_RED}[!] Failed to reach Phone.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Phone is offline.${C_RESET}"
+        fi
+        ;;
+      2)
+        if omni_is_online "$DESKTOP_IP"; then
+          ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "DISPLAY=:0 xdg-open '$target_url' 2>/dev/null || xdg-open '$target_url'" && \
+            echo -e "${C_GREEN}[✓] Opened $target_url on Desktop!${C_RESET}" || echo -e "${C_RED}[!] Failed to reach Desktop.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Desktop is offline.${C_RESET}"
+        fi
+        ;;
+      3)
+        if omni_is_online "$LAPTOP_IP"; then
+          ssh -o ConnectTimeout=3 "${LAPTOP_USER}@${LAPTOP_IP}" "DISPLAY=:0 xdg-open '$target_url' 2>/dev/null || xdg-open '$target_url'" && \
+            echo -e "${C_GREEN}[✓] Opened $target_url on Laptop!${C_RESET}" || echo -e "${C_RED}[!] Failed to reach Laptop.${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Laptop is offline.${C_RESET}"
+        fi
+        ;;
+    esac
+    ;;
+  2)
+    echo -e "${C_CYAN}[*] Migrating terminal session to Desktop...${C_RESET}"
+    if [ "$CURRENT_DEV" = "desktop" ]; then
+      echo -e "You are already on the Desktop workstation."
+      read -rsn1 -p "Press any key to return..." _
+      exec omni
+    fi
+    if omni_is_online "$DESKTOP_IP"; then
+      echo -e "${C_GREEN}[✓] Attaching to Desktop 'ai' tmux session...${C_RESET}"
+      ssh -t -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
+    else
+      echo -e "${C_RED}[!] Desktop unreachable.${C_RESET}"
+    fi
+    ;;
+  3)
+    echo -e "${C_CYAN}[*] Syncing clipboard and activating peer terminal...${C_RESET}"
+    "$SCRIPT_DIR/omni-clip" push
+    ;;
+esac
+
+echo ""
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " post_nav
+[[ "$post_nav" =~ ^[bB]$ ]] && exec omni
+exit 0

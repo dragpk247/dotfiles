@@ -84,8 +84,59 @@ desktop_clip_history() {
   fi
 }
 
-# ── Obsidian Note Ingestion with Graceful Cancel/Exit ──
+# ── Obsidian Note Ingestion with Graceful Cancel/Exit & Undo ──
 desktop_clip_to_obsidian() {
+  local vault_dir="${OBSIDIAN_VAULT_PATH:-$HOME/Documents/Obsidian Vault}"
+  local notes_dir="$vault_dir/Agent-Continuous-Knowledge"
+  local last_file_ptr="${XDG_STATE_HOME:-$HOME/.local/state}/omni/last_saved_note.txt"
+  mkdir -p "$notes_dir" "$(dirname "$last_file_ptr")" 2>/dev/null
+
+  echo -e "\n${C_CYAN}${C_BOLD}[📓 Obsidian Clipboard Vault Hub]:${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 📝 Save Current Clipboard to Obsidian Note"
+  echo -e "  ${C_CYAN}[u]${C_RESET} ↩️  Undo / Unsave Last Clip Note"
+  echo -e "  ${C_DIM}[Enter / q] Cancel back to menu${C_RESET}"
+  read -rsn1 -p "Select option: " obs_act
+  echo ""
+
+  case "$obs_act" in
+    ""|q|Q) return 0 ;;
+    u|U)
+      if [ -f "$last_file_ptr" ]; then
+        local target
+        target=$(cat "$last_file_ptr")
+        if [ -f "$target" ]; then
+          echo -e "${C_YELLOW}[!] Found last saved note:${C_RESET} $(basename "$target")"
+          read -r -p "Are you sure you want to delete this note? (y/N): " uconfirm
+          if [[ "$uconfirm" =~ ^[Yy]$ ]]; then
+            rm -f "$target"
+            rm -f "$last_file_ptr"
+            echo -e "${C_GREEN}[✓] Note deleted and reverted successfully!${C_RESET}"
+          else
+            echo -e "${C_DIM}Revert cancelled.${C_RESET}"
+          fi
+          return 0
+        fi
+      fi
+      # Fallback: check most recent file in notes_dir
+      local recent
+      recent=$(find "$notes_dir" -maxdepth 1 -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | awk '{print $2}')
+      if [ -n "$recent" ] && [ -f "$recent" ]; then
+        echo -e "${C_YELLOW}[!] Found latest note:${C_RESET} $(basename "$recent")"
+        read -r -p "Delete and revert this note? (y/N): " uconfirm
+        if [[ "$uconfirm" =~ ^[Yy]$ ]]; then
+          rm -f "$recent"
+          rm -f "$last_file_ptr" 2>/dev/null || true
+          echo -e "${C_GREEN}[✓] Note deleted and reverted successfully!${C_RESET}"
+        else
+          echo -e "${C_DIM}Revert cancelled.${C_RESET}"
+        fi
+      else
+        echo -e "${C_YELLOW}[!] No saved clip notes found to revert.${C_RESET}"
+      fi
+      return 0
+      ;;
+  esac
+
   local clip
   clip=$(omni_get_clipboard)
   if [ -z "$clip" ]; then
@@ -93,7 +144,7 @@ desktop_clip_to_obsidian() {
     return 1
   fi
 
-  echo -e "${C_CYAN}${C_BOLD}[📓 Ingest Clipboard to Obsidian Vault]:${C_RESET}"
+  echo -e "${C_CYAN}${C_BOLD}[📋 Clipboard Content]:${C_RESET}"
   echo "$clip" | head -n 8
   [ $(echo "$clip" | wc -l) -gt 8 ] && echo -e "${C_DIM}... (truncated)${C_RESET}"
   echo ""
@@ -108,10 +159,6 @@ desktop_clip_to_obsidian() {
   if [ -z "$ntitle" ]; then
     ntitle="Quick-Clip-$(date +%Y%m%d-%H%M)"
   fi
-
-  local vault_dir="$HOME/Documents/Obsidian Vault"
-  local notes_dir="$vault_dir/Agent-Continuous-Knowledge"
-  mkdir -p "$notes_dir" 2>/dev/null
 
   local fname="${ntitle// /_}.md"
   local target_file="$notes_dir/$fname"
@@ -136,6 +183,7 @@ $clip
 
 ---
 NOTE
+  echo "$target_file" > "$last_file_ptr"
   echo -e "${C_GREEN}[✓] Saved note to: $target_file${C_RESET}"
 }
 
@@ -291,6 +339,13 @@ while true; do
       omni_menu_item "w" "⚡ Wake Laptop (WoL)" "Magic packet to ${LAPTOP_MAC}"
     fi
     omni_menu_item "P" "🔄 Push / Pull Sync" "Git & Peer sync"
+    omni_menu_item "H" "🌐 Session Handoff" "omni handoff"
+    omni_menu_item "K" "🖥️  Peek Peer Screen" "omni peek"
+    omni_menu_item "F" "🎯 Focus / Deep Work" "omni focus"
+    omni_menu_item "X" "⚡ Snippet Runner" "omni snippets"
+    omni_menu_item "D" "🩺 Omni Doctor" "System diagnostics"
+    omni_menu_item "R" "🔧 Auto-Repair Fleet" "omni fix"
+    omni_menu_item "S" "🛡️  Omni Sentinel" "Fleet telemetry & battery"
     omni_menu_item "y" "🔄 Omni Update & Sync" "omni update"
     echo ""
   fi
@@ -387,6 +442,13 @@ while true; do
         "$SCRIPT_DIR/omni-notify" "$nmsg"
       fi
       ;;
+    H) "$SCRIPT_DIR/omni-handoff" ;;
+    K) "$SCRIPT_DIR/omni-peek" ;;
+    F) "$SCRIPT_DIR/omni-focus" ;;
+    X) "$SCRIPT_DIR/omni-snippets" ;;
+    D) "$SCRIPT_DIR/omni-doctor" ;;
+    R) "$SCRIPT_DIR/omni-fix" ;;
+    S) "$SCRIPT_DIR/omni-sentinel" ;;
     P) omni_sync_menu ;;
     y|Y)
       omni_run_update

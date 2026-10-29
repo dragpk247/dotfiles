@@ -23,11 +23,40 @@ case "${1:-}" in
     exec "$SCRIPT_DIR/omni-fzf"
     ;;
   update|--update)
-    omni_run_update
+    shift
+    omni_run_update "$@"
     exit 0
     ;;
   version|-v|--version)
     omni_show_version
+    exit 0
+    ;;
+  fix|--fix)
+    "$SCRIPT_DIR/omni-fix"
+    exit 0
+    ;;
+  peek|--peek)
+    "$SCRIPT_DIR/omni-peek"
+    exit 0
+    ;;
+  snippets|--snippets)
+    "$SCRIPT_DIR/omni-snippets"
+    exit 0
+    ;;
+  focus|--focus)
+    "$SCRIPT_DIR/omni-focus"
+    exit 0
+    ;;
+  doctor|--doctor)
+    "$SCRIPT_DIR/omni-doctor"
+    exit 0
+    ;;
+  handoff|--handoff)
+    "$SCRIPT_DIR/omni-handoff"
+    exit 0
+    ;;
+  sentinel|--sentinel)
+    "$SCRIPT_DIR/omni-sentinel"
     exit 0
     ;;
   sync|push|pull)

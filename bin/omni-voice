@@ -23,16 +23,27 @@ fi
 echo -e "\n${C_BOLD}You said:${C_RESET} \"$QUERY\""
 echo -e "${C_CYAN}[*] Processing with Copilot...${C_RESET}\n"
 
-# Run through ask
+# Run through ask or Desktop Copilot
 if [ -f "$HOME/bin/ask" ]; then
   RESPONSE=$("$HOME/bin/ask" "$QUERY" 2>&1)
-  echo "$RESPONSE"
-  
-  # Read aloud summary if short enough
-  CLEAN_TEXT=$(echo "$RESPONSE" | sed 's/\x1b\[[0-9;]*m//g' | head -n 4)
-  if [ -n "$CLEAN_TEXT" ]; then
-    echo -n "$CLEAN_TEXT" | termux-tts-speak 2>/dev/null || true
-  fi
+elif [ -n "$DESKTOP_IP" ] && omni_is_online "$DESKTOP_IP"; then
+  echo -e "${C_CYAN}[*] Routing query to Desktop GPU AI...${C_RESET}"
+  RESPONSE=$(ssh -o ConnectTimeout=4 "${DESKTOP_USER}@${DESKTOP_IP}" "agy '$QUERY' 2>/dev/null || claude -p '$QUERY' 2>/dev/null" || echo "Desktop AI response unavailable.")
 else
-  echo -e "${C_RED}[!] ~/bin/ask not found.${C_RESET}"
+  RESPONSE="Copilot is offline."
 fi
+
+echo "$RESPONSE"
+
+# Read aloud summary via TTS
+CLEAN_TEXT=$(echo "$RESPONSE" | sed 's/\x1b\[[0-9;]*m//g' | head -n 4)
+if [ -n "$CLEAN_TEXT" ]; then
+  echo -n "$CLEAN_TEXT" | termux-tts-speak 2>/dev/null || true
+fi
+
+echo ""
+echo -e "Navigation: [b] Back to OMNI Menu  |  [Enter / q] Exit to Shell"
+read -rsn1 -p "Select action: " v_nav
+echo ""
+[[ "$v_nav" =~ ^[bB]$ ]] && exec omni
+exit 0

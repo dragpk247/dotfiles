@@ -45,6 +45,39 @@ phone_wake_desktop() {
 }
 
 phone_clip_to_obsidian() {
+  echo -e "\n${C_CYAN}${C_BOLD}[📓 Obsidian Clipboard Vault Hub]:${C_RESET}"
+  echo -e "  ${C_CYAN}[1]${C_RESET} 📝 Save Current Phone Clipboard to Obsidian Note"
+  echo -e "  ${C_CYAN}[u]${C_RESET} ↩️  Undo / Unsave Last Clip Note from Vault"
+  echo -e "  ${C_DIM}[Enter / q] Cancel back to menu${C_RESET}"
+  read -rsn1 -p "Select option: " obs_act
+  echo ""
+
+  case "$obs_act" in
+    ""|q|Q) return 0 ;;
+    u|U)
+      echo -e "${C_CYAN}[*] Requesting revert of last saved note on Desktop...${C_RESET}"
+      ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "bash -s" << 'EOFSSH'
+        notes_dir="${OBSIDIAN_VAULT_PATH:-$HOME/Documents/Obsidian Vault}/Agent-Continuous-Knowledge"
+        last_ptr="${XDG_STATE_HOME:-$HOME/.local/state}/omni/last_saved_note.txt"
+        target=""
+        if [ -f "$last_ptr" ]; then
+          target=$(cat "$last_ptr")
+        fi
+        if [ -z "$target" ] || [ ! -f "$target" ]; then
+          target=$(find "$notes_dir" -maxdepth 1 -name "*.md" -printf '%T@ %p\n' 2>/dev/null | sort -n | tail -n 1 | awk '{print $2}')
+        fi
+        if [ -n "$target" ] && [ -f "$target" ]; then
+          echo "FOUND:$(basename "$target")"
+          rm -f "$target" "$last_ptr" 2>/dev/null
+          echo "SUCCESS"
+        else
+          echo "NOT_FOUND"
+        fi
+EOFSSH
+      return 0
+      ;;
+  esac
+
   local clip
   clip=$(omni_get_clipboard)
   if [ -z "$clip" ]; then
@@ -52,7 +85,7 @@ phone_clip_to_obsidian() {
     return 1
   fi
 
-  echo -e "${C_CYAN}${C_BOLD}[📓 Ingest Clipboard to Desktop Obsidian]:${C_RESET}"
+  echo -e "${C_CYAN}${C_BOLD}[📋 Ingest Clipboard to Desktop Obsidian]:${C_RESET}"
   echo "$clip" | head -n 6
   [ $(echo "$clip" | wc -l) -gt 6 ] && echo -e "${C_DIM}... (truncated)${C_RESET}"
   echo ""
@@ -68,7 +101,7 @@ phone_clip_to_obsidian() {
   local fname="${ntitle// /_}.md"
   
   echo -e "${C_CYAN}[*] Appending note to Desktop Obsidian Vault...${C_RESET}"
-  ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "mkdir -p \"\$HOME/Documents/Obsidian Vault/Agent-Continuous-Knowledge\" && cat << 'EOFNOTE' >> \"\$HOME/Documents/Obsidian Vault/Agent-Continuous-Knowledge/$fname\"
+  ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "mkdir -p \"\$HOME/Documents/Obsidian Vault/Agent-Continuous-Knowledge\" && mkdir -p \"\${XDG_STATE_HOME:-\$HOME/.local/state}/omni\" && cat << 'EOFNOTE' >> \"\$HOME/Documents/Obsidian Vault/Agent-Continuous-Knowledge/$fname\"
 # $ntitle
 
 - **Date:** \$(date '+%Y-%m-%d %H:%M:%S')
@@ -82,6 +115,7 @@ $clip
 
 ---
 EOFNOTE
+echo \"\$HOME/Documents/Obsidian Vault/Agent-Continuous-Knowledge/$fname\" > \"\${XDG_STATE_HOME:-\$HOME/.local/state}/omni/last_saved_note.txt\"
 " && echo -e "${C_GREEN}[✓] Saved to Desktop Obsidian Vault!${C_RESET}" || echo -e "${C_RED}[!] Could not reach Desktop.${C_RESET}"
 }
 
@@ -120,6 +154,12 @@ while true; do
   echo ""
   echo -e "${C_BLUE}${C_BOLD}  📁 3-WAY FILE TRANSFER & SYNC${C_RESET}"
   omni_menu_item "f" "📁 Send File to Peer" "omni send"
+  omni_menu_item "H" "🌐 Session Handoff" "omni handoff"
+  omni_menu_item "P" "🖥️  Peek Peer Screen" "omni peek"
+  omni_menu_item "F" "🎯 Focus / Deep Work" "omni focus"
+  omni_menu_item "X" "⚡ Snippet Runner" "omni snippets"
+  omni_menu_item "D" "🩺 Omni Doctor" "System diagnostics"
+  omni_menu_item "R" "🔧 Auto-Repair Fleet" "omni fix"
   omni_menu_item "p" "🔄 Push / Pull Sync" "Git & Desktop sync"
   omni_menu_item "y" "⚡ Self-Update" "omni update"
   omni_menu_item "M" "🧪 Sandbox Playground" "omni-mock"
@@ -163,7 +203,13 @@ while true; do
         "$SCRIPT_DIR/omni-send" "$fpath"
       fi
       ;;
-    p|P) omni_sync_menu ;;
+    H) "$SCRIPT_DIR/omni-handoff" ;;
+    P) "$SCRIPT_DIR/omni-peek" ;;
+    F) "$SCRIPT_DIR/omni-focus" ;;
+    X) "$SCRIPT_DIR/omni-snippets" ;;
+    D) "$SCRIPT_DIR/omni-doctor" ;;
+    R) "$SCRIPT_DIR/omni-fix" ;;
+    p) omni_sync_menu ;;
     y|Y) omni_run_update ;;
     z|Z) "$SCRIPT_DIR/omni-fzf" ;;
     *)

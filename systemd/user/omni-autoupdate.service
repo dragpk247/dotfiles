@@ -1,0 +1,11 @@
+[Unit]
+Description=OMNI Suite Auto-Update & Fleet Sync
+After=network-online.target tailscaled.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/jpi/.local/bin/omni update --quiet
+
+[Install]
+WantedBy=default.target
