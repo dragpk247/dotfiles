@@ -51,6 +51,7 @@ while true; do
     echo -e "${C_CYAN}${C_BOLD}  🖥️  DESKTOP REMOTE STREAMING & WORKSPACES${C_RESET}"
     omni_menu_item "1" "🤖 Remote Antigravity" "Desktop 'ai' session"
     omni_menu_item "a" "🚀 Local Antigravity" "Local 'ai' session"
+    omni_menu_item "H" "🕊️  Hermes Agent" "Local Hermes AI chat"
     omni_menu_item "2" "🟣 Remote Claude Code" "Desktop 'claude' session"
     omni_menu_item "3" "💻 Remote Aider" "Desktop 'aider' session"
     omni_menu_item "5" "⚡ Remote Jev Chat" "Inference router"
@@ -121,6 +122,7 @@ while true; do
       ;;
     1) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap" ;;
     a|A) [ -f "$HOME/ap" ] && "$HOME/ap" || agy ;;
+    h|H) hermes chat ;;
     2) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
     3) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;
     5) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat" ;;
