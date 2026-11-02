@@ -35,10 +35,10 @@ LAPTOP_IP="${LAPTOP_IP:-127.0.0.1}"
 DESKTOP_IP="${DESKTOP_IP:-127.0.0.1}"
 
 LOCAL_HOST=$(hostname)
-PEER_NAME="Desktop"
+PEER_NAME="🖥️  Desktop"
 PEER_IP="$DESKTOP_IP"
 if [[ "$LOCAL_HOST" =~ "desktop" ]]; then
-  PEER_NAME="Laptop"
+  PEER_NAME="💻 Laptop"
   PEER_IP="$LAPTOP_IP"
 fi
 

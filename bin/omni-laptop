@@ -44,7 +44,7 @@ while true; do
   d_stat="${C_RED}down${C_RESET}"; omni_is_online "$DESKTOP_IP" && d_stat="${C_GREEN}$(omni_ts_ping "$DESKTOP_IP")${C_RESET}"
   p_stat="${C_RED}down${C_RESET}"; omni_is_online "$PHONE_IP" && p_stat="${C_GREEN}$(omni_ts_ping "$PHONE_IP")${C_RESET}"
 
-  omni_render_header "Portable Laptop ($(hostname))" "│ Desktop: $d_stat │ S24: $p_stat"
+  omni_render_header "💻 Portable Laptop ($(hostname))" "│ 🖥️  Desktop: $d_stat │ 📱 Phone: $p_stat"
 
   # ── Area 1: Desktop Workspaces & AI ──
   if [ "${OMNI_ENABLE_AI:-true}" = "true" ]; then
