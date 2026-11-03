@@ -190,11 +190,14 @@ if [[ $- == *i* ]]; then
     BAT_PERCENT=$(echo "$BAT_INFO" | grep -o 'percentage:[0-9]*' | cut -d: -f2)
     BAT_PLUGGED=$(echo "$BAT_INFO" | grep -o 'plugged:[A-Z_]*' | cut -d: -f2)
 
-    [ -n "$BAT_PERCENT" ] && BAT_STR="${BAT_PERCENT}%" || BAT_STR="N/A"
-    [ "$BAT_PLUGGED" != "UNPLUGGED" ] && [ -n "$BAT_PLUGGED" ] && BAT_STR="${BAT_STR} (⚡)"
+    if [ -n "$BAT_PERCENT" ]; then
+        [ "$BAT_PLUGGED" = "UNPLUGGED" ] && BAT_STR="🔋 ${BAT_PERCENT}%" || BAT_STR="⚡ ${BAT_PERCENT}%"
+    else
+        BAT_STR="🔋 N/A"
+    fi
 
-    echo -e "${C_CYAN}${C_BOLD}⚡ S24 MOBILE WORKSTATION${C_RESET} ${C_DIM}• Security Shield Active${C_RESET}"
-    echo -e " ${C_GREEN}● Battery:${C_RESET}  ${BAT_STR}   ${C_GREEN}● Desktop:${C_RESET} ${DESK_STAT}   ${C_GREEN}● Laptop:${C_RESET} ${LAP_STAT}"
+    echo -e "${C_CYAN}${C_BOLD}📱 S24 PHONE CLI${C_RESET} ${C_DIM}• Security Shield Active${C_RESET}"
+    echo -e " ${C_GREEN}● Battery:${C_RESET}  ${BAT_STR}   ${C_GREEN}● 🖥️  Desktop:${C_RESET} ${DESK_STAT}   ${C_GREEN}● 💻 Laptop:${C_RESET} ${LAP_STAT}"
     echo -e " ${C_DIM}Type ${C_BOLD}'menu'${C_RESET}${C_DIM} or ${C_BOLD}'?'${C_RESET}${C_DIM} for commands, or jump straight into ${C_BOLD}'agy'${C_RESET}${C_DIM} or ${C_BOLD}'jev'${C_RESET}."
     echo ""
 fi
