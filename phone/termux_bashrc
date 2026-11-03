@@ -148,7 +148,8 @@ menu() {
     echo "   jev-dash        - Open Web Dashboard on phone"
     echo "   desk-logs       - Live stream router & inference logs"
     echo ""
-    echo -e "${C_BOLD}  🤖 AI AGENTS & WORKFLOWS (Desktop)${C_RESET}"
+    echo -e "${C_BOLD}  🤖 AI AGENTS & WORKFLOWS (Desktop & Local)${C_RESET}"
+    echo "   openrouter      - OpenRouter multi-model LLM chat (Local)"
     echo "   desk-agy        - Desktop AI (Antigravity)"
     echo "   desk-hermes     - Hermes Agent (Gateway & WhatsApp)"
     echo "   desk-claude     - Claude Code"
@@ -225,6 +226,7 @@ alias jev-dash="xdg-open 'http://$DESK_IP:8085/dashboard' 2>/dev/null || termux-
 alias desk-logs="desk_ssh tail -f /home/jpi/.local/share/obsidian-ai-router/server.log"
 
 # Desktop AI Agents
+alias openrouter="openrouter run"
 alias agy="desk_ssh /home/jpi/ap"
 alias desk-agy="agy"
 alias desk="agy"

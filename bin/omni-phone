@@ -141,6 +141,7 @@ while true; do
   omni_menu_item "6" "🟣 Claude Code" "Desktop 'claude' session"
   omni_menu_item "7" "💻 Aider Pair Programmer" "Desktop 'aider' session"
   omni_menu_item "8" "⚡ Jev Intelligent Router" "Interactive chat"
+  omni_menu_item "9" "🌐 OpenRouter CLI" "Multi-model LLM chat"
   echo ""
   echo -e "${C_YELLOW}${C_BOLD}  🌐 CONNECTIVITY, MEDIA & SHELLS (Multi-Device)${C_RESET}"
   omni_menu_item "s" "🐚 Local Phone Shell" "${PHONE_IP:-127.0.0.1}:${PHONE_PORT}"
@@ -191,6 +192,7 @@ while true; do
     6) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone" ;;
     7) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone" ;;
     8) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat" ;;
+    9) openrouter run ;;
     m|M) phone_media_control ;;
     t|T) ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status" ;;
     u|U) ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader" ;;
