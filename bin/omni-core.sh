@@ -19,6 +19,7 @@ export C_RED="\033[1;31m"
 export C_YELLOW="\033[1;33m"
 export C_BLUE="\033[1;34m"
 export C_MAGENTA="\033[1;35m"
+export C_WHITE="\033[1;37m"
 export C_DIM="\033[2m"
 
 # ── Interactive Setup Wizard ──
@@ -736,11 +737,11 @@ omni_render_header() {
  \___/|_|  |_|_| \_|___| \____|_____|___|
 BANNER
     omni_hr 75
-    echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET} ${extra_info}"
+    echo -e " ${C_BOLD}OMNI System Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_WHITE}${dev_name}${C_RESET} ${extra_info}"
     omni_hr 75
   elif [ "$cols" -ge 46 ]; then
     omni_hr "$cols"
-    echo -e " ${C_CYAN}${C_BOLD}⚡ OMNI Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_GREEN}${dev_name}${C_RESET}"
+    echo -e " ${C_CYAN}${C_BOLD}⚡ OMNI Control${C_RESET} ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_BOLD}Device:${C_RESET} ${C_WHITE}${dev_name}${C_RESET}"
     if [ -n "$extra_info" ]; then
       local clean_extra="${extra_info#│ }"
       echo -e " ${C_DIM}Status:${C_RESET} ${clean_extra}"
@@ -748,7 +749,7 @@ BANNER
     omni_hr "$cols"
   else
     # Ultra-compact view for mobile/narrow terminals (cols < 46)
-    echo -e "${C_CYAN}${C_BOLD}⚡ OMNI ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_GREEN}${dev_name}${C_RESET}"
+    echo -e "${C_CYAN}${C_BOLD}⚡ OMNI ${C_YELLOW}${OMNI_VERSION:-v1.4.0}${C_RESET} │ ${C_WHITE}${dev_name}${C_RESET}"
     if [ -n "$extra_info" ]; then
       local clean_extra="${extra_info#│ }"
       echo -e " ${C_DIM}${clean_extra}${C_RESET}"
