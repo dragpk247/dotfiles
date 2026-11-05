@@ -1,0 +1,23 @@
+#!/bin/bash
+# 99-sync-dotfiles.hook: Automatically re-apply host layouts and restore dotfiles plugins after omarchy update
+
+echo "==> Running post-update dotfiles & layout restoration..."
+
+# 1. Pull latest dotfiles repo if online
+if git -C "$HOME/dotfiles" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    git -C "$HOME/dotfiles" pull --ff-only 2>/dev/null || true
+fi
+
+# 2. Run omarchy-dotfiles install to restore host layout (desktop vs laptop) and custom plugins
+if command -v omarchy-dotfiles >/dev/null 2>&1; then
+    omarchy-dotfiles install
+fi
+
+# 3. Ensure shell reflects changes
+if command -v omarchy >/dev/null 2>&1; then
+    omarchy restart shell
+fi
+
+if command -v omarchy-notification-send >/dev/null 2>&1; then
+    omarchy-notification-send -g "🚀" "System Updated" "Omarchy update finished. Restored host bar layout & plugins."
+fi

@@ -211,6 +211,22 @@ def install_cli():
         cli_dest.symlink_to(cli_src)
         print(f"    Linked {cli_dest} -> {cli_src}")
 
+def install_hooks():
+    print("==> Restoring Omarchy event hooks...")
+    hooks_src = DOTFILES_DIR / "omarchy" / "hooks"
+    hooks_dest = Path.home() / ".config" / "omarchy" / "hooks"
+    if hooks_src.exists():
+        for hook_dir in hooks_src.iterdir():
+            if hook_dir.is_dir():
+                target_dir = hooks_dest / hook_dir.name
+                target_dir.mkdir(parents=True, exist_ok=True)
+                for hook_file in hook_dir.iterdir():
+                    if hook_file.is_file():
+                        target_file = target_dir / hook_file.name
+                        shutil.copy2(hook_file, target_file)
+                        target_file.chmod(0o755)
+                        print(f"    Installed hook: {hook_file.name} -> {target_file}")
+
 def main():
     install_plugins()
     install_shell_config()
@@ -219,6 +235,7 @@ def main():
     install_hexacore()
     install_omni()
     install_cli()
+    install_hooks()
     print("\n✓ All components installed successfully!")
 
 if __name__ == "__main__":
