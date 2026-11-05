@@ -15,7 +15,7 @@ if [[ "$verb" != "toggle" ]]; then
 fi
 
 is_menu_layer_visible() {
-  hyprctl layers 2>/dev/null | grep -q "namespace: omarchy-menu"
+  hyprctl layers 2>/dev/null | grep -qE "namespace: omarchy-(menu|dock-apps)"
 }
 
 if is_menu_layer_visible; then

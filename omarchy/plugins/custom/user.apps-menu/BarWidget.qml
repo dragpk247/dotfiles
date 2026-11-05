@@ -12,7 +12,7 @@ BarWidget {
 
   function toggleApps() {
     if (root.bar) {
-      root.bar.run("omarchy-menu toggle apps")
+      root.bar.run("omarchy-shell omarchy.dock apps")
     }
   }
 
