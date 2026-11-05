@@ -85,7 +85,19 @@ def install_plugins():
 
 def install_shell_config():
     print("==> Restoring Omarchy shell configuration...")
-    src_shell = DOTFILES_DIR / "omarchy" / "shell.json"
+    import socket
+    hostname = socket.gethostname().lower()
+    layouts_dir = DOTFILES_DIR / "omarchy" / "layouts"
+
+    if "laptop" in hostname and (layouts_dir / "shell.laptop.json").exists():
+        src_shell = layouts_dir / "shell.laptop.json"
+        print(f"    Detected laptop host ({hostname}); using {src_shell.name}")
+    elif (layouts_dir / "shell.desktop.json").exists():
+        src_shell = layouts_dir / "shell.desktop.json"
+        print(f"    Detected desktop host ({hostname}); using {src_shell.name}")
+    else:
+        src_shell = DOTFILES_DIR / "omarchy" / "shell.json"
+
     if src_shell.exists():
         if OMARCHY_SHELL_DEST.exists():
             backup_path = OMARCHY_SHELL_DEST.with_suffix(f".json.bak.{int(datetime.now().timestamp())}")

@@ -1,0 +1,126 @@
+{
+  "bar": {
+    "background": "opaque",
+    "layout": {
+      "center": [
+        {
+          "format": "dddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "id": "omarchy.clock",
+          "verticalFormat": "HH\n\u2014\nmm"
+        }
+      ],
+      "centerBegin": [
+        {
+          "id": "omarchy.indicators"
+        }
+      ],
+      "centerEnd": [
+        {
+          "cities": [
+            {
+              "name": "Eastern",
+              "zone": "US/Eastern"
+            },
+            {
+              "name": "London",
+              "zone": "Europe/London"
+            },
+            {
+              "name": "Dubai",
+              "zone": "Asia/Dubai"
+            },
+            {
+              "name": "Tokyo",
+              "zone": "Asia/Tokyo"
+            },
+            {
+              "name": "Los Angeles",
+              "zone": "America/Los_Angeles"
+            }
+          ],
+          "id": "omarchy.elsewhen"
+        },
+        {
+          "id": "omarchy.weather"
+        },
+        {
+          "id": "omarchy.system-update"
+        }
+      ],
+      "left": [
+        {
+          "id": "jpi.menu"
+        },
+        {
+          "id": "omarchy.workspaces"
+        }
+      ],
+      "right": [
+        {
+          "id": "omarchy.tray"
+        },
+        {
+          "id": "io.github.x3me.nexthop"
+        },
+        {
+          "id": "ucmz851.omasecurity"
+        },
+        {
+          "id": "robzolkos.github"
+        },
+        {
+          "id": "dizziee.system-updates"
+        },
+        {
+          "id": "dizziee.auto-wallpaper"
+        },
+        {
+          "id": "io.github.diegopluna.argus"
+        },
+        {
+          "id": "user.apps-menu"
+        },
+        {
+          "id": "user.dev-workflows"
+        },
+        {
+          "id": "user.process-cleaner"
+        },
+        {
+          "id": "omarchy.bluetooth"
+        },
+        {
+          "id": "omarchy.network"
+        },
+        {
+          "id": "omarchy.audio"
+        },
+        {
+          "id": "jpi.monitor"
+        },
+        {
+          "id": "omarchy.power",
+          "showPercentage": true
+        }
+      ]
+    },
+    "position": "top"
+  },
+  "cloneSourceRestores": [
+    "jpi.menu"
+  ],
+  "disabledPlugins": [
+    "omarchy.menu"
+  ],
+  "idle": {
+    "lock": 180,
+    "screensaver": 90
+  },
+  "plugins": [
+    {
+      "id": "io.github.deunnis.lacquer"
+    }
+  ],
+  "version": 1
+}

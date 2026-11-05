@@ -47,7 +47,21 @@ def run_cmd(cmd, cwd=None, check=True):
 def sync_omarchy_shell():
     print("==> Syncing Omarchy shell configuration...")
     DEST_OMARCHY.mkdir(parents=True, exist_ok=True)
+    layouts_dir = DEST_OMARCHY / "layouts"
+    layouts_dir.mkdir(parents=True, exist_ok=True)
+
     if OMARCHY_SHELL_SRC.exists():
+        import socket
+        hostname = socket.gethostname().lower()
+        if "laptop" in hostname:
+            dest_host = layouts_dir / "shell.laptop.json"
+        else:
+            dest_host = layouts_dir / "shell.desktop.json"
+
+        shutil.copy2(OMARCHY_SHELL_SRC, dest_host)
+        print(f"    Synced host layout: {OMARCHY_SHELL_SRC} -> {dest_host}")
+
+        # Also keep fallback default shell.json
         dest = DEST_OMARCHY / "shell.json"
         shutil.copy2(OMARCHY_SHELL_SRC, dest)
         print(f"    Synced {OMARCHY_SHELL_SRC} -> {dest}")

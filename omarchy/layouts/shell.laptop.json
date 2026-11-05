@@ -1,0 +1,135 @@
+{
+  "bar": {
+    "background": "glassy",
+    "layout": {
+      "center": [
+        {
+          "format": "ddd HH:mm",
+          "formatAlt": "d MMMM 'W'ww yyyy",
+          "id": "omarchy.clock",
+          "verticalFormat": "HH\n—\nmm"
+        }
+      ],
+      "centerBegin": [
+        {
+          "id": "jpi.menu"
+        },
+        {
+          "id": "omarchy.workspaces"
+        },
+        {
+          "id": "omarchy.indicators"
+        }
+      ],
+      "centerEnd": [
+        {
+          "cities": [
+            {
+              "name": "New York",
+              "zone": "America/New_York"
+            },
+            {
+              "name": "London",
+              "zone": "Europe/London"
+            },
+            {
+              "name": "Dubai",
+              "zone": "Asia/Dubai"
+            },
+            {
+              "name": "Tokyo",
+              "zone": "Asia/Tokyo"
+            },
+            {
+              "name": "Los Angeles",
+              "zone": "America/Los_Angeles"
+            },
+            {
+              "lat": 19.07283,
+              "lon": 72.88261,
+              "name": "Mumbai",
+              "region": "Maharashtra, IN",
+              "zone": "Asia/Kolkata"
+            },
+            {
+              "lat": 29.76328,
+              "lon": -95.36327,
+              "name": "Houston",
+              "region": "Texas, US",
+              "zone": "America/Chicago"
+            }
+          ],
+          "id": "omarchy.elsewhen"
+        },
+        {
+          "id": "omarchy.weather"
+        }
+      ],
+      "left": [
+        {
+          "id": "omarchy.keyboard-layout"
+        }
+      ],
+      "right": [
+        {
+          "id": "omarchy.tray"
+        },
+        {
+          "id": "io.github.diegopluna.argus"
+        },
+        {
+          "id": "dizziee.system-updates"
+        },
+        {
+          "id": "robzolkos.github"
+        },
+        {
+          "id": "user.touch-toggle"
+        },
+        {
+          "id": "user.dev-workflows"
+        },
+        {
+          "id": "omarchy.bluetooth"
+        },
+        {
+          "id": "omarchy.network"
+        },
+        {
+          "id": "omarchy.audio"
+        },
+        {
+          "id": "jpi.monitor"
+        },
+        {
+          "id": "jpi.power",
+          "showPercentage": true
+        }
+      ],
+      "tray": []
+    },
+    "position": "top"
+  },
+  "cloneSourceRestores": [
+    "jpi.menu"
+  ],
+  "disabledPlugins": [
+    "dizziee.auto-wallpaper",
+    "io.github.x3me.nexthop",
+    "omarchy.menu",
+    "ucmz851.omasecurity",
+    "user.apps-menu",
+    "user.kbd-backlight",
+    "user.process-cleaner"
+  ],
+  "idle": {
+    "lock": 180,
+    "screensaver": 90
+  },
+  "plugins": [
+    {
+      "id": "io.github.deunnis.lacquer"
+    }
+  ],
+  "version": 1
+}
