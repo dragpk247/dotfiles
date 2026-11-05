@@ -1,0 +1,102 @@
+#!/bin/bash
+# omarchy-kill-agent: Quick-kill individual or all active AI agent processes
+
+TARGET="${1:-select}"
+
+get_running_agents() {
+    local list=()
+    pgrep -f 'agy' >/dev/null 2>&1 && list+=("agy")
+    pgrep -f 'hermes' >/dev/null 2>&1 && list+=("hermes")
+    pgrep -f 'claude' >/dev/null 2>&1 && list+=("claude")
+    pgrep -f 'codex' >/dev/null 2>&1 && list+=("codex")
+    pgrep -f 'opencode' >/dev/null 2>&1 && list+=("opencode")
+    pgrep -f 'aider' >/dev/null 2>&1 && list+=("aider")
+    echo "${list[@]}"
+}
+
+kill_named() {
+    local name="$1"
+    case "$name" in
+        agy|antigravity)
+            pkill -f 'agy'
+            notify-send -i process-stop "AI Agents" "Terminated Antigravity (agy)"
+            ;;
+        hermes)
+            pkill -f 'hermes'
+            notify-send -i process-stop "AI Agents" "Terminated Hermes Agent"
+            ;;
+        claude)
+            pkill -f 'claude'
+            notify-send -i process-stop "AI Agents" "Terminated Claude Code"
+            ;;
+        codex)
+            pkill -f 'codex'
+            notify-send -i process-stop "AI Agents" "Terminated Codex CLI"
+            ;;
+        opencode)
+            pkill -f 'opencode'
+            notify-send -i process-stop "AI Agents" "Terminated OpenCode AI"
+            ;;
+        aider)
+            pkill -f 'aider'
+            notify-send -i process-stop "AI Agents" "Terminated Aider pair-programmer"
+            ;;
+        all|All)
+            pkill -f 'agy'
+            pkill -f 'hermes'
+            pkill -f 'claude'
+            pkill -f 'codex'
+            pkill -f 'opencode'
+            pkill -f 'aider'
+            notify-send -i process-stop "AI Agents" "Terminated all active AI agent sessions"
+            ;;
+        *)
+            echo "Unknown target: $name" >&2
+            exit 1
+            ;;
+    esac
+}
+
+ACTIVE=($(get_running_agents))
+
+if [ "${#ACTIVE[@]}" -eq 0 ]; then
+    notify-send -i dialog-information "AI Agents" "No active agent processes found to terminate."
+    exit 0
+fi
+
+if [ "$TARGET" = "all" ] || [ "$TARGET" = "All" ]; then
+    kill_named all
+    exit 0
+fi
+
+if [ "$TARGET" != "select" ]; then
+    kill_named "$TARGET"
+    exit 0
+fi
+
+# Interactive selection if called without specific target
+TAB=$'\t'
+OPTIONS=()
+for a in "${ACTIVE[@]}"; do
+    pids=$(pgrep -f "$a" | tr '\n' ' ')
+    OPTIONS+=("🛑${TAB}Kill $a (PIDs: ${pids% })${TAB}Send SIGTERM to terminate $a process")
+done
+
+if [ "${#ACTIVE[@]}" -gt 1 ]; then
+    OPTIONS+=("💥${TAB}Kill ALL Running Agents (${ACTIVE[*]})${TAB}Terminate all active agent sessions simultaneously")
+fi
+
+CHOICE_RAW=$(omarchy-menu-select "Terminate Active Agent Process" "${OPTIONS[@]}" -- --width 480)
+[ -z "$CHOICE_RAW" ] && exit 0
+
+CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
+
+case "$CHOICE" in
+    *"Kill ALL"*)
+        kill_named all
+        ;;
+    *"Kill "*)
+        selected_agent=$(echo "$CHOICE" | awk '{print $2}')
+        kill_named "$selected_agent"
+        ;;
+esac

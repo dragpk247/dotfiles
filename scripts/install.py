@@ -17,6 +17,7 @@ DOTFILES_DIR = Path(__file__).resolve().parent.parent
 OMARCHY_PLUGINS_DEST = Path.home() / ".config" / "omarchy" / "plugins"
 OMARCHY_SHELL_DEST = Path.home() / ".config" / "omarchy" / "shell.json"
 OMARCHY_EXTENSIONS_DEST = Path.home() / ".config" / "omarchy" / "extensions"
+OMARCHY_SETTINGS_DEST = Path.home() / ".local" / "state" / "omarchy" / "settings"
 HYPR_DEST = Path.home() / ".config" / "hypr"
 BIN_DEST = Path.home() / ".local" / "bin"
 HYPR_BINDINGS = HYPR_DEST / "bindings.lua"
@@ -27,6 +28,7 @@ HEXACORE_SRC = DOTFILES_DIR / "hexacore"
 HYPR_SRC = DOTFILES_DIR / "hypr"
 SHORTCUT_SCRIPTS_SRC = DOTFILES_DIR / "shortcuts" / "scripts"
 OMARCHY_EXTENSIONS_SRC = DOTFILES_DIR / "omarchy" / "extensions"
+SETTINGS_SRC = DOTFILES_DIR / "omarchy" / "settings"
 
 def run_cmd(cmd, cwd=None, check=True):
     res = subprocess.run(cmd, cwd=cwd, shell=isinstance(cmd, str), capture_output=True, text=True)
@@ -93,6 +95,19 @@ def install_shell_config():
         print(f"    Restored {OMARCHY_SHELL_DEST}")
     else:
         print("    Warning: omarchy/shell.json not found in dotfiles.")
+
+def install_settings():
+    print("==> Restoring Omarchy settings...")
+    OMARCHY_SETTINGS_DEST.mkdir(parents=True, exist_ok=True)
+    src_workflows = SETTINGS_SRC / "dev-workflows.json"
+    if src_workflows.exists():
+        dest_workflows = OMARCHY_SETTINGS_DEST / "dev-workflows.json"
+        if dest_workflows.exists():
+            backup = dest_workflows.with_suffix(f".json.bak.{int(datetime.now().timestamp())}")
+            shutil.copy2(dest_workflows, backup)
+            print(f"    Backed up existing dev-workflows.json to {backup.name}")
+        shutil.copy2(src_workflows, dest_workflows)
+        print(f"    Restored {dest_workflows}")
 
 def install_shortcuts():
     print("==> Restoring Omarchy shortcuts & Hyprland bindings...")
@@ -187,6 +202,7 @@ def install_cli():
 def main():
     install_plugins()
     install_shell_config()
+    install_settings()
     install_shortcuts()
     install_hexacore()
     install_omni()

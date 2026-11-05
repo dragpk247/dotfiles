@@ -1,0 +1,31 @@
+#!/bin/bash
+# revert-dev-agents-unification: Reverts the Dev Workflows & AI Agents bar unification
+
+BACKUP_POINTER="$HOME/.local/state/omarchy/backups/latest-unification-backup"
+
+if [ ! -f "$BACKUP_POINTER" ]; then
+    notify-send -i dialog-error "Revert Failed" "No previous unification backup pointer found."
+    echo "Error: Backup pointer not found" >&2
+    exit 1
+fi
+
+BACKUP_DIR=$(cat "$BACKUP_POINTER")
+
+if [ ! -d "$BACKUP_DIR" ]; then
+    notify-send -i dialog-error "Revert Failed" "Backup directory $BACKUP_DIR does not exist."
+    echo "Error: Backup dir not found" >&2
+    exit 1
+fi
+
+echo "Restoring from $BACKUP_DIR..."
+
+[ -f "$BACKUP_DIR/shell.json" ] && cp "$BACKUP_DIR/shell.json" "$HOME/.config/omarchy/shell.json"
+[ -f "$BACKUP_DIR/dev-workflows-BarWidget.qml" ] && cp "$BACKUP_DIR/dev-workflows-BarWidget.qml" "$HOME/.config/omarchy/plugins/user.dev-workflows/BarWidget.qml"
+[ -f "$BACKUP_DIR/omarchy-workflow-menu" ] && cp "$BACKUP_DIR/omarchy-workflow-menu" "$HOME/.local/bin/omarchy-workflow-menu"
+
+chmod +x "$HOME/.local/bin/omarchy-workflow-menu" 2>/dev/null || true
+
+omarchy restart shell
+
+notify-send -i preferences-system "Dev & Agents Unification" "Successfully reverted back to separate bar widgets!"
+echo "Revert complete! Separate widgets restored."

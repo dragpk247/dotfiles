@@ -1,9 +1,9 @@
 {
   "version": 1,
-  "updated_at": "2026-10-13T22:50:07.466156",
-  "total_plugins": 17,
+  "updated_at": "2026-11-05T10:04:09.307811",
+  "total_plugins": 18,
   "upstream_count": 8,
-  "custom_count": 9,
+  "custom_count": 10,
   "upstream_plugins": [
     {
       "id": "dizziee.auto-wallpaper",
@@ -11,7 +11,7 @@
       "description": "Preview the active theme's wallpapers and automatically cycle or shuffle them on a schedule.",
       "version": "1.1.0",
       "repo_url": "https://github.com/JJDizz1L/dizziee.auto-wallpaper.git",
-      "commit": "2bb66623c5404be417ba92a2bba872ba0b2aec61",
+      "commit": "89865f7f4975688234f257255b2135f76c5f5b80",
       "branch": "main",
       "kinds": [
         "service",
@@ -23,9 +23,9 @@
       "id": "dizziee.cline-model-usage",
       "name": "Cline Usage",
       "description": "Cline usage stats in the Omarchy bar.",
-      "version": "1.1.0",
+      "version": "1.2.0",
       "repo_url": "https://github.com/JJDizz1L/dizziee.cline-model-usage.git",
-      "commit": "917920ae096ef8d3e2339c2f5303f0f04b2a21e3",
+      "commit": "9c2fa8b52c141ce82ff365bec0ba1cff593a9f26",
       "branch": "master",
       "kinds": [
         "bar-widget"
@@ -36,8 +36,8 @@
       "name": "System Updates",
       "description": "Arch, AUR, Flatpak, Omarchy, plugins, and mise update indicator with per-repo update buttons.",
       "version": "1.5.0",
-      "repo_url": "https://github.com/JJDizz1L/dizziee.system-updates.git",
-      "commit": "ae80cd3dc933e4e0eb18cb7be61672e1e645bde2",
+      "repo_url": "https://github.com/dragpk247/dizziee.system-updates.git",
+      "commit": "0b2f66edcc7a1284e3e600d7b285ed0b2c050cd9",
       "branch": "master",
       "kinds": [
         "bar-widget"
@@ -197,6 +197,16 @@
         "bar-widget"
       ],
       "path": "omarchy/plugins/custom/user.process-cleaner"
+    },
+    {
+      "id": "user.touch-toggle",
+      "name": "Touch & Input Fix",
+      "description": "Quickly toggle touchscreen and touchpad to resolve ghost touches or input anomalies",
+      "version": "1.0.0",
+      "kinds": [
+        "bar-widget"
+      ],
+      "path": "omarchy/plugins/custom/user.touch-toggle"
     }
   ],
   "hexacore": {

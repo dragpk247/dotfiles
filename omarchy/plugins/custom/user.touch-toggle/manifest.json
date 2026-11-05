@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "user.touch-toggle",
+  "name": "Touch & Input Fix",
+  "version": "1.0.0",
+  "author": "jpi",
+  "description": "Quickly toggle touchscreen and touchpad to resolve ghost touches or input anomalies",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "BarWidget.qml"
+  },
+  "barWidget": {
+    "displayName": "Touch & Input Fix",
+    "description": "Toggle touchscreen and touchpad to fix erratic cursor or ghost touches",
+    "category": "Hardware",
+    "allowMultiple": false
+  }
+}

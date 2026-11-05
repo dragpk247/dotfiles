@@ -34,6 +34,7 @@ o.bind("SUPER + ALT + B", "Toggle battery limit (80% / 100%)", "asus-battery-tog
 hl.unbind("SUPER + K")
 hl.unbind("SUPER + ALT + K")
 o.bind("SUPER + ALT + K", "Toggle keyboard backlight", "/home/jpi/.local/bin/asus-kbd-sync toggle", { locked = true })
+o.bind("SUPER + U", "Dizzie System Updates", "omarchy-shell shell toggle dizziee.system-updates")
 o.bind("SUPER + ALT + R", "Cycle ROG fan & performance profile", "asus-profile-toggle")
 o.bind("SUPER + ALT + G", "Toggle GPU (Integrated / Hybrid) & power profile", "gpu-profile-switch toggle")
 o.bind("SUPER + ALT + P", "Fuzzy project workspace switcher", "project-switcher")
@@ -50,3 +51,10 @@ o.bind("SUPER + ALT + LEFT", "Screen orientation: 270° portrait", "asus-rotate 
 -- AI Agent Shortcuts
 o.bind("SUPER + A", "Antigravity CLI", "omarchy-launch-or-focus agy 'kitty --class agy --title agy -e agy'")
 o.bind("SUPER + SHIFT + H", "Hermes Agent", "omarchy-launch-or-focus hermes 'kitty --title hermes -e hermes'")
+
+-- Dictation keys from before Alt + Space and Right Alt became the defaults.
+-- Remove these lines to give the keys back to applications.
+if o.dictation_installed and o.dictation_installed() then
+  o.bind("SUPER + CTRL + X", "Toggle dictation", "omarchy-dictation toggle")
+  o.bind_hold("F9", "Start dictation (push-to-talk)", "omarchy-dictation start", "Stop dictation (push-to-talk)", "omarchy-dictation stop")
+end

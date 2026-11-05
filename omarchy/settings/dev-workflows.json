@@ -1,0 +1,230 @@
+{
+  "active_workflow": "ai-assisted",
+  "workflows": [
+    {
+      "id": "ai-assisted",
+      "name": "AI-Assisted Prototyping",
+      "icon": "󰑮",
+      "description": "Antigravity, Hermes, Aider, Claude Code, OpenCode, Codex, Ollama, SDLC",
+      "tools": [
+        {
+          "name": "Antigravity (agy)",
+          "icon": "🤖",
+          "action": "omarchy-launch-or-focus agy \"kitty --class agy --title agy -e agy\""
+        },
+        {
+          "name": "Hermes Agent",
+          "icon": "⚕",
+          "action": "omarchy-launch-or-focus hermes \"kitty --title hermes -e hermes\""
+        },
+        {
+          "name": "Aider (Desktop Free Qwen 14B)",
+          "icon": "⚡",
+          "action": "kitty --class aider-float -e bash -ic aq"
+        },
+        {
+          "name": "Aider (Claude Haiku)",
+          "icon": "☁️",
+          "action": "kitty --class aider-float -e bash -ic ah"
+        },
+        {
+          "name": "AI SDLC Development Hub",
+          "icon": "🚀",
+          "action": "omarchy-sdlc-menu"
+        },
+        {
+          "name": "Claude Code",
+          "icon": "⚡",
+          "action": "omarchy-launch-or-focus claude \"kitty --title claude -e claude\""
+        },
+        {
+          "name": "OpenCode AI",
+          "icon": "✨",
+          "action": "omarchy-launch-or-focus opencode \"kitty --title opencode -e opencode\""
+        },
+        {
+          "name": "Codex CLI",
+          "icon": "💻",
+          "action": "omarchy-launch-or-focus codex \"kitty --title codex -e codex\""
+        },
+        {
+          "name": "AI Gateway Dashboard",
+          "icon": "🌐",
+          "action": "xdg-open http://localhost:8000/dashboard"
+        },
+        {
+          "name": "Live Diff Watcher (hunk)",
+          "icon": "󰚢",
+          "action": "omarchy-launch-or-focus hunk-diff \"kitty --title hunk-diff -e hunk diff --watch\""
+        },
+        {
+          "name": "Ollama Chat",
+          "icon": "🦙",
+          "action": "setsid kitty --title \"Ollama Chat\" -e ollama run llama3 >/dev/null 2>&1 &"
+        },
+        {
+          "name": "Dropdown Scratchpad",
+          "icon": "",
+          "action": "toggle-dropdown-terminal"
+        }
+      ]
+    },
+    {
+      "id": "herdr-prototyping",
+      "name": "Herdr Swarms & Prototyping",
+      "icon": "󰢹",
+      "description": "Herdr Workspaces, Multi-Agent Swarms, Worktrees, Hunk Diff",
+      "tools": [
+        {
+          "name": "Herdr Workspace",
+          "icon": "",
+          "action": "omarchy-launch-or-focus herdr 'kitty --title herdr -e herdr'"
+        },
+        {
+          "name": "Herdr Dev Square (hds)",
+          "icon": "⊞",
+          "action": "omarchy-launch-or-focus herdr-hds 'kitty --title herdr -e bash -ic \"herdr && hds\"'"
+        },
+        {
+          "name": "Dual AI Layout (hdl agy claude)",
+          "icon": "👥",
+          "action": "omarchy-launch-or-focus herdr-hdl 'kitty --title herdr -e bash -ic \"herdr && hdl agy claude\"'"
+        },
+        {
+          "name": "4-Agent Swarm (hsl 4 agy)",
+          "icon": "🐝",
+          "action": "omarchy-launch-or-focus herdr-hsl 'kitty --title herdr -e bash -ic \"herdr && hsl 4 agy\"'"
+        },
+        {
+          "name": "Git Worktree Manager",
+          "icon": "🌱",
+          "action": "omarchy-launch-or-focus herdr-worktree 'kitty --title herdr-worktree -e bash -c \"herdr worktree list; exec bash\"'"
+        },
+        {
+          "name": "Live Diff Watcher (hunk)",
+          "icon": "󰊢",
+          "action": "omarchy-launch-or-focus hunk-diff 'kitty --title hunk-diff -e hunk diff --watch'"
+        }
+      ]
+    },
+    {
+      "id": "fullstack-web",
+      "name": "Full-Stack Web & Cloud",
+      "icon": "󰖟",
+      "description": "Neovim, Tmux, Lazygit, Lazydocker, Node/Mise",
+      "tools": [
+        {
+          "name": "Neovim Editor",
+          "icon": "",
+          "action": "omarchy-launch-or-focus nvim 'kitty --title nvim -e nvim'"
+        },
+        {
+          "name": "Tmux Workspace",
+          "icon": "",
+          "action": "omarchy-launch-or-focus tmux-dev 'kitty --title tmux-dev -e tmux new-session -A -s dev'"
+        },
+        {
+          "name": "Lazygit Git Client",
+          "icon": "󰊢",
+          "action": "omarchy-launch-or-focus lazygit 'kitty --title lazygit -e lazygit'"
+        },
+        {
+          "name": "Lazydocker TUI",
+          "icon": "󰡨",
+          "action": "omarchy-launch-or-focus lazydocker 'kitty --title lazydocker -e lazydocker'"
+        },
+        {
+          "name": "Live Diff Watcher (hunk)",
+          "icon": "󰊢",
+          "action": "omarchy-launch-or-focus hunk-diff 'kitty --title hunk-diff -e hunk diff --watch'"
+        },
+        {
+          "name": "Project Switcher (fzf)",
+          "icon": "",
+          "action": "project-switcher"
+        }
+      ]
+    },
+    {
+      "id": "systems-performance",
+      "name": "Systems & Performance",
+      "icon": "󰅟",
+      "description": "Rust, Btop, Systemd Logs, Hyprland Config, GPU Profile",
+      "tools": [
+        {
+          "name": "Btop System Monitor",
+          "icon": "󰄪",
+          "action": "omarchy-launch-or-focus btop 'kitty --title btop -e btop'"
+        },
+        {
+          "name": "Hyprland Config Editor",
+          "icon": "",
+          "action": "omarchy-launch-or-focus-tui nvim ~/.config/hypr/bindings.lua"
+        },
+        {
+          "name": "Journalctl System Logs",
+          "icon": "📜",
+          "action": "setsid kitty --title 'System Logs' -e journalctl --user -f >/dev/null 2>&1 &"
+        },
+        {
+          "name": "GPU Mode Switcher (iGPU / dGPU)",
+          "icon": "󰢮",
+          "action": "gpu-profile-switch"
+        },
+        {
+          "name": "ASUS Power Profile Cycle",
+          "icon": "⚡",
+          "action": "asus-profile-toggle"
+        },
+        {
+          "name": "ASUS Battery Limit Toggle",
+          "icon": "🔋",
+          "action": "asus-battery-toggle"
+        }
+      ]
+    },
+    {
+      "id": "hexacore-workstation",
+      "name": "HexaCore Workstation",
+      "icon": "💠",
+      "description": "6 Dedicated Workspaces: agy, Firefox, Spotify, btop, nvtop, Mission Center",
+      "tools": [
+        {
+          "name": "Launch All 6 Workspaces",
+          "icon": "🚀",
+          "action": "workflow-hexacore"
+        },
+        {
+          "name": "Workspace 1: Antigravity CLI",
+          "icon": "🤖",
+          "action": "hyprctl dispatch workspace 1"
+        },
+        {
+          "name": "Workspace 2: Firefox",
+          "icon": "🦊",
+          "action": "hyprctl dispatch workspace 2"
+        },
+        {
+          "name": "Workspace 3: Spotify",
+          "icon": "🎵",
+          "action": "hyprctl dispatch workspace 3"
+        },
+        {
+          "name": "Workspace 4: btop (CPU/RAM)",
+          "icon": "📊",
+          "action": "hyprctl dispatch workspace 4"
+        },
+        {
+          "name": "Workspace 5: nvtop (GPU/Watts)",
+          "icon": "⚡",
+          "action": "hyprctl dispatch workspace 5"
+        },
+        {
+          "name": "Workspace 6: Mission Center",
+          "icon": "🖥️",
+          "action": "hyprctl dispatch workspace 6"
+        }
+      ]
+    }
+  ]
+}

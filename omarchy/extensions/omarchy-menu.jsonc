@@ -14,6 +14,33 @@
     "action": "omarchy-workflow-menu"
   },
 
+  // OMNI Remote Streaming: Hotspot Moonlight
+  "trigger.hotspot-moonlight": {
+    "icon": "󰤨",
+    "label": "Hotspot Moonlight",
+    "description": "Stream Desktop over hotspot (120fps low-latency)",
+    "aliases": ["hotspot", "hotspot-moonlight", "moonlight-hotspot"],
+    "action": "omni hotspot-moonlight"
+  },
+
+  // OMNI Remote Streaming: 5 GHz Wi-Fi Moonlight
+  "trigger.wifi-moonlight": {
+    "icon": "󰤨",
+    "label": "5 GHz Moonlight",
+    "description": "Stream Desktop over 5 GHz Wi-Fi (60fps 35Mbps HEVC)",
+    "aliases": ["wifi-moonlight", "moonlight-wifi", "moonlight-5g", "5g-moonlight"],
+    "action": "omni wifi-moonlight"
+  },
+
+  // OMNI Remote Streaming: 2.4 GHz Wi-Fi Moonlight
+  "trigger.2g-moonlight": {
+    "icon": "󰤨",
+    "label": "2.4 GHz Moonlight",
+    "description": "Stream Desktop over 2.4 GHz Wi-Fi (60fps 14Mbps stable)",
+    "aliases": ["2g-moonlight", "moonlight-2g", "moonlight-2.4g", "2.4g-moonlight"],
+    "action": "omni 2g-moonlight"
+  },
+
   // AI Agents launcher & session manager
   "trigger.agents": {
     "icon": "󰚩",
@@ -50,5 +77,21 @@
     "aliases": ["keyboard-light", "kbd-light"],
     "checked": "[[ $(brightnessctl --device='asus::kbd_backlight' get 2>/dev/null || echo 0) -gt 0 ]]",
     "action": "asus-kbd-sync toggle"
+  },
+
+  // Dizzie System Updates in Trigger and Update submenus
+  "trigger.dizziee-updater": {
+    "icon": "󰚰",
+    "label": "Dizzie System Updates",
+    "description": "Open Dizzie system update checker and installer",
+    "aliases": ["dizzie", "updater", "updates", "upgrade"],
+    "action": "omarchy-shell shell toggle dizziee.system-updates"
+  },
+  "update.dizziee-updater": {
+    "icon": "󰚰",
+    "label": "Dizzie System Updates",
+    "description": "Open Dizzie system update checker and installer",
+    "aliases": ["dizzie", "updater", "updates"],
+    "action": "omarchy-shell shell toggle dizziee.system-updates"
   }
 }

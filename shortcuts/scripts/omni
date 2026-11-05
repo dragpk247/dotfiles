@@ -1,0 +1,340 @@
+#!/usr/bin/env bash
+# ==============================================================================
+#  OMNI — Open-Source Multi-Device Command & Control Center
+#  Author: Jordan Isaac (dragpk247)
+# ==============================================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "$SCRIPT_DIR/omni-core.sh"
+
+CURRENT_DEVICE=$(omni_detect_device)
+
+case "${1:-}" in
+  --phone|phone-ui)
+    exec "$SCRIPT_DIR/omni-phone"
+    ;;
+  --laptop|laptop-ui)
+    exec "$SCRIPT_DIR/omni-laptop"
+    ;;
+  --desktop|desktop-ui)
+    exec "$SCRIPT_DIR/omni-desktop"
+    ;;
+  -f|--fzf|fzf)
+    exec "$SCRIPT_DIR/omni-fzf"
+    ;;
+  update|--update)
+    shift
+    omni_run_update "$@"
+    exit 0
+    ;;
+  version|-v|--version)
+    omni_show_version
+    exit 0
+    ;;
+  fix|--fix)
+    "$SCRIPT_DIR/omni-fix"
+    exit 0
+    ;;
+  peek|--peek)
+    "$SCRIPT_DIR/omni-peek"
+    exit 0
+    ;;
+  snippets|--snippets)
+    "$SCRIPT_DIR/omni-snippets"
+    exit 0
+    ;;
+  focus|--focus)
+    "$SCRIPT_DIR/omni-focus"
+    exit 0
+    ;;
+  doctor|--doctor)
+    "$SCRIPT_DIR/omni-doctor"
+    exit 0
+    ;;
+  handoff|--handoff)
+    "$SCRIPT_DIR/omni-handoff"
+    exit 0
+    ;;
+  sentinel|--sentinel)
+    "$SCRIPT_DIR/omni-sentinel"
+    exit 0
+    ;;
+  sync|push|pull)
+    omni_sync_menu
+    exit 0
+    ;;
+  share)
+    shift
+    exec "$SCRIPT_DIR/omni-share" "$@"
+    ;;
+  setup|--setup)
+    omni_run_setup
+    exit 0
+    ;;
+  pair)
+    shift
+    target="${1:-}"
+    case "$target" in
+      laptop|lap) omni_pair_device "$LAPTOP_USER" "$LAPTOP_IP" 22 ;;
+      phone|s24) omni_pair_device "$PHONE_USER" "$PHONE_IP" "$PHONE_PORT" ;;
+      desktop|desk) omni_pair_device "$DESKTOP_USER" "$DESKTOP_IP" 22 ;;
+      *)
+        echo -e "${C_CYAN}Omni SSH Key-Pairing Assistant${C_RESET}"
+        echo "Usage: omni pair [desktop|laptop|phone]"
+        read -r -p "Select target [desktop/laptop/phone]: " p_ans
+        case "$p_ans" in
+          desktop|desk) omni_pair_device "$DESKTOP_USER" "$DESKTOP_IP" 22 ;;
+          laptop|lap) omni_pair_device "$LAPTOP_USER" "$LAPTOP_IP" 22 ;;
+          phone|s24) omni_pair_device "$PHONE_USER" "$PHONE_IP" "$PHONE_PORT" ;;
+          *) echo "Cancelled." ;;
+        esac
+        ;;
+    esac
+    exit 0
+    ;;
+  wol)
+    shift
+    target="${1:-}"
+    case "$target" in
+      desktop|desk)
+        echo -e "${C_CYAN}[*] Sending Wake-on-LAN to Desktop ($DESKTOP_MAC)...${C_RESET}"
+        omni_wake_mac "$DESKTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent.${C_RESET}"
+        ;;
+      laptop|lap)
+        echo -e "${C_CYAN}[*] Sending Wake-on-LAN to Laptop ($LAPTOP_MAC)...${C_RESET}"
+        omni_wake_mac "$LAPTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent.${C_RESET}"
+        ;;
+      "")
+        echo -e "${C_CYAN}Omni Wake-on-LAN${C_RESET}"
+        if [ "$CURRENT_DEVICE" = "laptop" ] && [ -n "$DESKTOP_MAC" ]; then
+          omni_wake_mac "$DESKTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent to Desktop ($DESKTOP_MAC).${C_RESET}"
+        elif [ -n "$LAPTOP_MAC" ]; then
+          omni_wake_mac "$LAPTOP_MAC" && echo -e "${C_GREEN}[✓] Magic packet sent to Laptop ($LAPTOP_MAC).${C_RESET}"
+        else
+          echo -e "${C_YELLOW}[!] Please specify a target: omni wol [desktop|laptop|<MAC>]${C_RESET}"
+        fi
+        ;;
+      *)
+        omni_wake_mac "$target" && echo -e "${C_GREEN}[✓] Magic packet sent to $target.${C_RESET}"
+        ;;
+    esac
+    exit 0
+    ;;
+  ts|tailscale)
+    echo -e "${C_CYAN}${C_BOLD}=== OMNI Tailscale Fleet Status ===${C_RESET}\n"
+    if command -v tailscale >/dev/null 2>&1; then
+      tailscale status
+      echo ""
+      echo -e "${C_BOLD}Ping Latency:${C_RESET}"
+      [ "$DESKTOP_IP" != "127.0.0.1" ] && echo -e "  Desktop ($DESKTOP_IP): $(omni_ts_ping "$DESKTOP_IP")"
+      [ "$LAPTOP_IP" != "127.0.0.1" ] && echo -e "  Laptop  ($LAPTOP_IP):  $(omni_ts_ping "$LAPTOP_IP")"
+      [ "$PHONE_IP" != "127.0.0.1" ] && echo -e "  Phone   ($PHONE_IP):   $(omni_ts_ping "$PHONE_IP")"
+    else
+      echo -e "${C_YELLOW}[!] Tailscale not installed on this machine.${C_RESET}"
+    fi
+    exit 0
+    ;;
+  tools)
+    shift
+    if [ ! -f "$CUSTOM_TOOLS_FILE" ]; then
+      echo -e "${C_YELLOW}[!] No custom tools configured at $CUSTOM_TOOLS_FILE${C_RESET}"
+      echo -e "Run 'omni setup' or create $CUSTOM_TOOLS_FILE with format:"
+      echo -e "  <hotkey> | <label> | <command>"
+    else
+      echo -e "${C_CYAN}${C_BOLD}=== OMNI Custom Registered Tools ===${C_RESET}\n"
+      cat "$CUSTOM_TOOLS_FILE"
+      echo ""
+      echo -e "${C_DIM}Edit with: \${EDITOR:-nano} $CUSTOM_TOOLS_FILE${C_RESET}"
+    fi
+    exit 0
+    ;;
+  mock|--mock|sandbox)
+    shift
+    exec "$SCRIPT_DIR/omni-mock" "$@"
+    ;;
+  send)
+    shift
+    exec "$SCRIPT_DIR/omni-send" "$@"
+    ;;
+  clip)
+    shift
+    exec "$SCRIPT_DIR/omni-clip" "$@"
+    ;;
+  voice)
+    shift
+    exec "$SCRIPT_DIR/omni-voice" "$@"
+    ;;
+  notify)
+    shift
+    exec "$SCRIPT_DIR/omni-notify" "$@"
+    ;;
+  stream)
+    moonlight stream "$DESKTOP_IP" "Desktop"
+    ;;
+  stream-win)
+    moonlight stream --display-mode windowed "$DESKTOP_IP" "Desktop"
+    ;;
+  ""|menu)
+    case "$CURRENT_DEVICE" in
+      phone) exec "$SCRIPT_DIR/omni-phone" ;;
+      laptop) exec "$SCRIPT_DIR/omni-laptop" ;;
+      desktop) exec "$SCRIPT_DIR/omni-desktop" ;;
+      *) exec "$SCRIPT_DIR/omni-desktop" ;;
+    esac
+    ;;
+  help|-h|--help)
+    echo "OMNI — Intelligent Multi-Device Command Center (Current: $CURRENT_DEVICE)"
+    echo "Usage: omni [menu|version|mock|update|send|clip|voice|notify|fzf|setup|--phone|--laptop|--desktop]"
+    echo ""
+    echo "Commands:"
+    echo "  omni version          Display installed version, git commit hash & peer checksums"
+    echo "  omni setup            Interactive onboarding, NIC/MAC binding & tool setup"
+    echo "  omni mock             Run safe sandbox environment without touching config"
+    echo "  omni pair [peer]      Automated passwordless SSH key pairing"
+    echo "  omni wol [desk|lap]   Send Wake-on-LAN magic packet by hardware MAC"
+    echo "  omni ts               Tailscale mesh status and peer latency test"
+    echo "  omni tools            List or view custom registered user tools"
+    echo "  omni sync             Push / Pull sync menu (Git & peer-to-peer)"
+    echo "  omni update           Self-updater (git pull, symlink & push to phone)"
+    echo "  omni send <file>      3-Way file transfer (Desktop <-> Laptop <-> S24)"
+    echo "  omni clip [push|pull] Universal clipboard sync across all devices"
+    echo "  omni voice            Voice-to-AI Assistant with audio feedback (S24)"
+    echo "  omni notify <msg>     Push alert across desktop and S24 phone notification shade"
+    echo "  omni -f / omni fzf    Interactive real-time fuzzy search action launcher"
+    echo "  omni ask <query>      Direct mobile copilot query"
+    echo "  omni top / gpu / lock Desktop telemetry and screen lock"
+    exit 0
+    ;;
+  ask)
+    shift
+    if [ -f "$HOME/bin/ask" ]; then
+      "$HOME/bin/ask" "$@"
+    else
+      echo "Ask copilot is configured on phone."
+    fi
+    ;;
+  clip-ask)
+    [ -f "$HOME/bin/clip-ask" ] && "$HOME/bin/clip-ask"
+    ;;
+  clip-run)
+    [ -f "$HOME/bin/clip-run" ] && "$HOME/bin/clip-run"
+    ;;
+  guard)
+    [ -f "$HOME/bin/smart-guard.sh" ] && "$HOME/bin/smart-guard.sh" && echo "🛡️ Battery & Thermals: SAFE"
+    ;;
+  top|desk-top)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/desk-status" ] && "$HOME/.local/bin/desk-status" || htop
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/desk-status"
+    fi
+    ;;
+  gpu|desk-gpu)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader
+    else
+      ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "nvidia-smi --query-gpu=name,utilization.gpu,memory.used,memory.total,temperature.gpu --format=csv,noheader"
+    fi
+    ;;
+  lock|desk-lock)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      loginctl lock-session 2>/dev/null || hyprctl dispatch exit 2>/dev/null || true
+    else
+      ssh -o ConnectTimeout=3 "${DESKTOP_USER}@${DESKTOP_IP}" "loginctl lock-session 2>/dev/null || true"
+    fi
+    ;;
+  agy)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/ap" ] && "$HOME/ap" || agy
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/ap"
+    fi
+    ;;
+  local-agy)
+    [ -f "$HOME/ap" ] && "$HOME/ap" || agy
+    ;;
+  claude)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/claude-phone" ] && "$HOME/.local/bin/claude-phone" || claude
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/claude-phone"
+    fi
+    ;;
+  aider)
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/aider-phone" ] && "$HOME/.local/bin/aider-phone" || aider
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/aider-phone"
+    fi
+    ;;
+  jev)
+    shift
+    if [ "$CURRENT_DEVICE" = "desktop" ]; then
+      [ -f "$HOME/.local/bin/jev-chat" ] && "$HOME/.local/bin/jev-chat" "$@"
+    else
+      ssh -o ConnectTimeout=3 -t "${DESKTOP_USER}@${DESKTOP_IP}" "/home/${DESKTOP_USER}/.local/bin/jev-chat '$*'"
+    fi
+    ;;
+  phone)
+    ssh -p "$PHONE_PORT" "${PHONE_USER}@${PHONE_IP}"
+    ;;
+  laptop)
+    ssh -o ConnectTimeout=3 -t "${LAPTOP_USER}@${LAPTOP_IP}"
+    ;;
+  windows|pc)
+    if [ -n "${WINDOWS_IP:-}" ]; then
+      ssh -o ConnectTimeout=3 -t "${WINDOWS_USER:-jpi}@${WINDOWS_IP}"
+    else
+      echo -e "${C_RED}[!] WINDOWS_IP not configured in config.env${C_RESET}"
+      exit 1
+    fi
+    ;;
+  mirror)
+    adb connect "${PHONE_IP}:5555" 2>/dev/null || true
+    scrcpy --stay-awake --turn-screen-off || scrcpy
+    ;;
+  *)
+    if [ -n "${1:-}" ] && omni_exec_custom "$*"; then
+      exit 0
+    fi
+    case "$CURRENT_DEVICE" in
+      phone) exec "$SCRIPT_DIR/omni-phone" ;;
+      laptop|mac) exec "$SCRIPT_DIR/omni-laptop" ;;
+      desktop|wsl|*) exec "$SCRIPT_DIR/omni-desktop" ;;
+    esac
+    ;;
+esac
+
+# Resume dispatch
+case "${1:-}" in
+  resume)
+    shift
+    subcmd="${1:-}"
+    shift || true
+    case "$subcmd" in
+      check) exec check-resume "$@" ;;
+      pitch) exec draft-pitch "$@" ;;
+      build) exec build-resume "$@" ;;
+      send)
+        # e.g.: omni resume send java --phone
+        role="${1:-java}"
+        shift || true
+        target="${1:---phone}"
+        case "$role" in
+          java) rpath="$HOME/Documents/resumes/Jordan Isaac/01_Java_FullStack/Jordan_Isaac_Java_FullStack_Resume.pdf" ;;
+          devops) rpath="$HOME/Documents/resumes/Jordan Isaac/02_DevOps_Platform/Jordan_Isaac_DevOps_Platform_Resume.pdf" ;;
+          *) rpath="$HOME/Documents/resumes/Jordan Isaac/03_Software_Engineer_Master/Jordan_Isaac_Resume.pdf" ;;
+        esac
+        exec "$SCRIPT_DIR/omni-send" "$rpath" "$target"
+        ;;
+      *)
+        echo -e "${C_CYAN}Omni Resume Command Hub${C_RESET}"
+        echo "  omni resume check <file.pdf> [--role 'keywords']  (Run pre-flight ATS auditor)"
+        echo "  omni resume pitch <company> <role>                (Generate hiring manager note & LinkedIn links)"
+        echo "  omni resume build <file.html>                     (Compile 1-page PDF + Word .docx)"
+        echo "  omni resume send [java|devops|master] [--phone]   (AirDrop resume instantly to phone/laptop)"
+        exit 0
+        ;;
+    esac
+    ;;
+esac

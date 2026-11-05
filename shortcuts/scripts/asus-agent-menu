@@ -2,44 +2,64 @@
 # asus-agent-menu: Interactive AI Agent manager & launcher for Omarchy / Hyprland
 
 check_process() {
-    local name="$1"
-    if pgrep -x "$name" >/dev/null 2>&1; then
+    local pattern="$1"
+    if pgrep -f "$pattern" >/dev/null 2>&1; then
         echo "ACTIVE"
     else
         echo "IDLE"
     fi
 }
 
-AGY_STATUS=$(check_process agy)
-HERMES_STATUS=$(check_process hermes)
-CLAUDE_STATUS=$(check_process claude)
-CODEX_STATUS=$(check_process codex)
-OLLAMA_STATUS=$(systemctl is-active ollama 2>/dev/null || echo "inactive")
+AGY_STATUS=$(check_process "(agy|antigravity-cli)")
+HERMES_STATUS=$(check_process "hermes")
+CLAUDE_STATUS=$(check_process "claude")
+CODEX_STATUS=$(check_process "codex")
+OPENCODE_STATUS=$(check_process "opencode")
+AIDER_STATUS=$(check_process "aider")
+OLLAMA_STATUS=$(systemctl is-active ollama 2>/dev/null || check_process "ollama")
 
 TAB=$'\t'
+OPTIONS=()
+OPTIONS+=("🤖${TAB}Antigravity (agy) [$AGY_STATUS]${TAB}Focus existing session or launch new kitty terminal")
+OPTIONS+=("⚕${TAB}Hermes Agent [$HERMES_STATUS]${TAB}Focus existing session or launch Hermes CLI")
+OPTIONS+=("⚡${TAB}Aider (Desktop Free Qwen 14B) [$AIDER_STATUS]${TAB}Direct floating pair-programmer (100% Free local GPU)")
+OPTIONS+=("☁️${TAB}Aider (Claude Haiku) [$AIDER_STATUS]${TAB}Direct floating pair-programmer via OpenRouter")
+OPTIONS+=("🚀${TAB}AI SDLC Pipeline Hub${TAB}Multi-tier automated development: Plan -> Code -> Test -> Review")
+OPTIONS+=("⚡${TAB}Claude Code [$CLAUDE_STATUS]${TAB}Focus existing session or launch claude CLI")
+OPTIONS+=("✨${TAB}OpenCode AI [$OPENCODE_STATUS]${TAB}Focus existing session or launch opencode CLI")
+OPTIONS+=("💻${TAB}Codex CLI [$CODEX_STATUS]${TAB}Focus existing session or launch codex CLI")
+OPTIONS+=("🦙${TAB}Ollama Local AI [$OLLAMA_STATUS]${TAB}Select from local models (llama3, qwen2.5, etc.) and chat")
+OPTIONS+=("🌐${TAB}AI Gateway & Observability Dashboard${TAB}Open Requesty metrics, virtual keys & cost tracker")
+OPTIONS+=("📊${TAB}View Agent Token Usage & Limits${TAB}Check today's token burn, prompts, and subscription status")
+OPTIONS+=("📈${TAB}Toggle Native Omarchy Agents Panel${TAB}Open full Omarchy 4.5.0 rate-limit meters & usage panel")
+OPTIONS+=("🛑${TAB}Kill / Close Active Agent Terminals${TAB}Terminate running background agent processes")
 
-CHOICE_RAW=$(omarchy-menu-select "AI Agents & Sessions" \
-  "🤖${TAB}Antigravity (agy) [$AGY_STATUS]${TAB}Focus existing session or launch new kitty terminal" \
-  "☤${TAB}Hermes Agent [$HERMES_STATUS]${TAB}Focus existing session or launch Hermes CLI" \
-  "⚡${TAB}Claude Code [$CLAUDE_STATUS]${TAB}Focus existing session or launch claude CLI" \
-  "💻${TAB}Codex CLI [$CODEX_STATUS]${TAB}Focus existing session or launch codex CLI" \
-  "🦙${TAB}Ollama Local AI [$OLLAMA_STATUS]${TAB}Select from local models (llama3, qwen2.5, etc.) and chat" \
-  "📊${TAB}View Agent Token Usage & Limits${TAB}Check today's token burn, prompts, and subscription status" \
-  "🛑${TAB}Kill / Close Active Agent Terminals${TAB}Terminate running background agent processes" \
-  -- --width 540
-)
+CHOICE_RAW=$(omarchy-menu-select "AI Agents & Sessions" "${OPTIONS[@]}" -- --width 580)
 
+[ -z "$CHOICE_RAW" ] && exit 0
 CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
 
 case "$CHOICE" in
   *"Antigravity"*)
-    omarchy-launch-or-focus agy "kitty --title agy -e agy"
+    omarchy-launch-or-focus agy "kitty --class agy --title agy -e agy"
     ;;
   *"Hermes"*)
     omarchy-launch-or-focus hermes "kitty --title hermes -e hermes"
     ;;
+  *"Aider (Desktop Free Qwen"*)
+    kitty --class aider-float -e bash -ic aq
+    ;;
+  *"Aider (Claude Haiku"*)
+    kitty --class aider-float -e bash -ic ah
+    ;;
+  *"AI SDLC Pipeline Hub"*)
+    omarchy-sdlc-menu
+    ;;
   *"Claude Code"*)
     omarchy-launch-or-focus claude "kitty --title claude -e claude"
+    ;;
+  *"OpenCode AI"*)
+    omarchy-launch-or-focus opencode "kitty --title opencode -e opencode"
     ;;
   *"Codex CLI"*)
     omarchy-launch-or-focus codex "kitty --title codex -e codex"
@@ -58,6 +78,9 @@ case "$CHOICE" in
         setsid kitty --title "Ollama ($MODEL)" -e ollama run "$MODEL" >/dev/null 2>&1 &
     fi
     ;;
+  *"AI Gateway & Observability"*)
+    xdg-open "http://localhost:8000/dashboard"
+    ;;
   *"View Agent Token Usage"*)
     omarchy-agent-usage-update >/dev/null 2>&1
     STATS=""
@@ -69,31 +92,43 @@ case "$CHOICE" in
             today_prompts=$(jq -r '.todayPrompts // 0' "$f" 2>/dev/null)
             tier=$(jq -r '.tierLabel // ""' "$f" 2>/dev/null)
             [ -n "$tier" ] && tier=" ($tier)"
-            STATS="$STATS\n• $agent_name$tier: $today_tokens tokens today ($today_prompts prompts)"
+            if [ "$today_tokens" -gt 0 ] || [ "$today_prompts" -gt 0 ]; then
+                fmt_tokens=$(python3 -c "print(f'{$today_tokens:,}')" 2>/dev/null || echo "$today_tokens")
+                STATS="$STATS\n• $agent_name$tier: $fmt_tokens tokens ($today_prompts prompts)"
+            fi
         fi
     done
     if [ -z "$STATS" ]; then
-        STATS="No local usage records found yet."
+        STATS="No active token records for today yet."
     fi
-    notify-send -t 8000 -i dialog-information "AI Agent Usage Stats" "$STATS"
+    notify-send -t 9000 -i dialog-information "AI Agent Usage Stats (Today)" "$STATS"
+    ;;
+  *"Toggle Native Omarchy Agents Panel"*)
+    omarchy-shell shell toggle omarchy.agents
     ;;
   *"Kill / Close"*)
-    TARGET=$(omarchy-menu-select "Select Agent to Terminate" "agy" "hermes" "claude" "codex" "All" -- --width 400)
+    TARGET=$(omarchy-menu-select "Select Agent to Terminate" "agy" "hermes" "claude" "codex" "opencode" "aider" "All" -- --width 400)
     case "$TARGET" in
         agy)
-            pkill -x agy && notify-send -i dialog-warning "AI Agents" "Closed agy sessions"
+            pkill -f agy && notify-send -i dialog-warning "AI Agents" "Closed agy sessions"
             ;;
         hermes)
-            pkill -x hermes && notify-send -i dialog-warning "AI Agents" "Closed hermes sessions"
+            pkill -f hermes && notify-send -i dialog-warning "AI Agents" "Closed hermes sessions"
             ;;
         claude)
-            pkill -x claude && notify-send -i dialog-warning "AI Agents" "Closed claude sessions"
+            pkill -f claude && notify-send -i dialog-warning "AI Agents" "Closed claude sessions"
             ;;
         codex)
-            pkill -x codex && notify-send -i dialog-warning "AI Agents" "Closed codex sessions"
+            pkill -f codex && notify-send -i dialog-warning "AI Agents" "Closed codex sessions"
+            ;;
+        opencode)
+            pkill -f opencode && notify-send -i dialog-warning "AI Agents" "Closed opencode sessions"
+            ;;
+        aider)
+            pkill -f aider && notify-send -i dialog-warning "AI Agents" "Closed aider sessions"
             ;;
         All)
-            pkill -x agy; pkill -x hermes; pkill -x claude; pkill -x codex
+            pkill -f agy; pkill -f hermes; pkill -f claude; pkill -f codex; pkill -f opencode; pkill -f aider
             notify-send -i dialog-warning "AI Agents" "Terminated all active AI agent sessions"
             ;;
     esac

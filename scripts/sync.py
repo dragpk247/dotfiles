@@ -21,6 +21,7 @@ DOTFILES_DIR = Path(__file__).resolve().parent.parent
 OMARCHY_PLUGINS_SRC = Path.home() / ".config" / "omarchy" / "plugins"
 OMARCHY_SHELL_SRC = Path.home() / ".config" / "omarchy" / "shell.json"
 OMARCHY_MENU_SRC = Path.home() / ".config" / "omarchy" / "extensions" / "omarchy-menu.jsonc"
+OMARCHY_SETTINGS_SRC = Path.home() / ".local" / "state" / "omarchy" / "settings"
 
 HYPR_DIR_SRC = Path.home() / ".config" / "hypr"
 LOCAL_BIN_SRC = Path.home() / ".local" / "bin"
@@ -32,6 +33,7 @@ DEST_OMARCHY = DOTFILES_DIR / "omarchy"
 DEST_PLUGINS = DEST_OMARCHY / "plugins"
 DEST_CUSTOM_PLUGINS = DEST_PLUGINS / "custom"
 DEST_EXTENSIONS = DEST_OMARCHY / "extensions"
+DEST_SETTINGS = DEST_OMARCHY / "settings"
 DEST_HEXACORE = DOTFILES_DIR / "hexacore"
 DEST_HYPR = DOTFILES_DIR / "hypr"
 DEST_SHORTCUT_SCRIPTS = DOTFILES_DIR / "shortcuts" / "scripts"
@@ -51,6 +53,15 @@ def sync_omarchy_shell():
         print(f"    Synced {OMARCHY_SHELL_SRC} -> {dest}")
     else:
         print(f"    Warning: {OMARCHY_SHELL_SRC} not found.")
+
+def sync_omarchy_settings():
+    print("==> Syncing Omarchy settings...")
+    DEST_SETTINGS.mkdir(parents=True, exist_ok=True)
+    wf_settings = OMARCHY_SETTINGS_SRC / "dev-workflows.json"
+    if wf_settings.exists():
+        dest = DEST_SETTINGS / "dev-workflows.json"
+        shutil.copy2(wf_settings, dest)
+        print(f"    Synced {wf_settings} -> {dest}")
 
 def sync_hexacore():
     print("==> Syncing HexaCore Workstation...")
@@ -125,6 +136,14 @@ def sync_shortcuts():
             first_word = act.strip().split()[0]
             bin_name = Path(first_word).name
             scripts_to_check.add(bin_name)
+
+    # Core workflow and desktop management helpers
+    scripts_to_check.update([
+        "omarchy-kill-agent",
+        "omarchy-workflow",
+        "omarchy-touch-menu",
+        "revert-dev-agents-unification"
+    ])
 
     copied_scripts = []
     for sname in sorted(scripts_to_check):
@@ -267,6 +286,7 @@ def main():
     args = parser.parse_args()
 
     sync_omarchy_shell()
+    sync_omarchy_settings()
     sync_shortcuts()
     sync_hexacore()
     sync_plugins()

@@ -9,26 +9,49 @@ BarWidget {
   moduleName: "user.agents-control"
 
   property string runningAgent: "idle"
+  property var activeList: []
 
   function refresh() {
     if (!checkProc.running) checkProc.running = true
   }
 
-  function openMenu() {
-    if (root.bar) {
-      root.bar.run("asus-agent-menu")
+  function runCmd(cmd) {
+    if (root.bar && typeof root.bar.run === "function") {
+      root.bar.run(cmd)
+    } else {
+      actionProc.command = ["bash", "-c", cmd]
+      actionProc.running = true
     }
+  }
+
+  function openMenu() {
+    root.runCmd("asus-agent-menu")
+  }
+
+  function toggleDashboard() {
+    root.runCmd("omarchy-shell shell toggle omarchy.agents")
   }
 
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
   Process {
+    id: actionProc
+    command: ["true"]
+  }
+
+  Process {
     id: checkProc
-    command: ["bash", "-c", "if pgrep -x agy >/dev/null 2>&1; then echo agy; elif pgrep -x claude >/dev/null 2>&1; then echo claude; elif pgrep -x codex >/dev/null 2>&1; then echo codex; else echo idle; fi"]
+    command: ["bash", "-c", "active=(); pgrep -f 'agy' >/dev/null 2>&1 && active+=(agy); pgrep -f 'hermes' >/dev/null 2>&1 && active+=(hermes); pgrep -f 'claude' >/dev/null 2>&1 && active+=(claude); pgrep -f 'codex' >/dev/null 2>&1 && active+=(codex); pgrep -f 'opencode' >/dev/null 2>&1 && active+=(opencode); pgrep -f 'aider' >/dev/null 2>&1 && active+=(aider); (IFS=,; echo \"${active[*]:-idle}\")"]
     stdout: SplitParser {
       onRead: function(line) {
-        root.runningAgent = String(line).trim()
+        var str = String(line).trim()
+        root.runningAgent = str
+        if (str !== "idle" && str !== "") {
+          root.activeList = str.split(",")
+        } else {
+          root.activeList = []
+        }
       }
     }
   }
@@ -48,9 +71,15 @@ BarWidget {
     bar: root.bar
     text: "󰚩"
     active: root.runningAgent !== "idle"
-    tooltipText: "AI Agents: " + (root.runningAgent !== "idle" ? root.runningAgent.toUpperCase() + " (Running)" : "Idle") + "\nClick to open launcher & status menu"
+    tooltipText: "AI Agents: " + (root.runningAgent !== "idle" ? root.runningAgent.toUpperCase() : "Idle") +
+                 "\n\n• Left-Click: Open Agent Manager & Launchers" +
+                 "\n• Right-Click: Toggle Native Omarchy 4.5.0 Token Dashboard"
     onPressed: function(b) {
-      root.openMenu()
+      if (b === Qt.RightButton) {
+        root.toggleDashboard()
+      } else {
+        root.openMenu()
+      }
     }
   }
 }

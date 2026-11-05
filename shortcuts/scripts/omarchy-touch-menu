@@ -1,0 +1,83 @@
+#!/bin/bash
+# omarchy-touch-menu: Interactive menu to toggle Touchscreen, Touchpad, and resolve input glitches
+
+TS_DISABLED_FILE="$HOME/.local/state/omarchy/toggles/hypr/touchscreen-disabled-name"
+TP_DISABLED_FILE="$HOME/.local/state/omarchy/toggles/hypr/touchpad-disabled-name"
+
+if [ -f "$TS_DISABLED_FILE" ]; then
+  TS_STATUS="DISABLED"
+  TS_LABEL="Enable Touchscreen"
+  TS_SUB="Currently DISABLED — click to re-enable touch input"
+  TS_ICON="󰝂"
+else
+  TS_STATUS="ENABLED"
+  TS_LABEL="Disable Touchscreen"
+  TS_SUB="Currently ENABLED — click to stop ghost touches & spazzing"
+  TS_ICON="󰝁"
+fi
+
+if [ -f "$TP_DISABLED_FILE" ]; then
+  TP_STATUS="DISABLED"
+  TP_LABEL="Enable Touchpad"
+  TP_SUB="Currently DISABLED — click to re-enable laptop touchpad"
+  TP_ICON="󰟸"
+else
+  TP_STATUS="ENABLED"
+  TP_LABEL="Disable Touchpad"
+  TP_SUB="Currently ENABLED — click to disable laptop touchpad"
+  TP_ICON="󰟸"
+fi
+
+KBD_CUR=$(brightnessctl --device='asus::kbd_backlight' get 2>/dev/null || echo 0)
+if [ "$KBD_CUR" -gt 0 ]; then
+  KBD_STATUS="ON"
+  KBD_LABEL="Turn OFF Keyboard Backlight"
+  KBD_SUB="Currently ON (level $KBD_CUR) — click to turn off"
+  KBD_ICON=""
+else
+  KBD_STATUS="OFF"
+  KBD_LABEL="Turn ON Keyboard Backlight"
+  KBD_SUB="Currently OFF — click to turn on"
+  KBD_ICON=""
+fi
+
+TAB=$'\t'
+OPTIONS=()
+OPTIONS+=("${TS_ICON}${TAB}${TS_LABEL}${TAB}${TS_SUB}")
+OPTIONS+=("${TP_ICON}${TAB}${TP_LABEL}${TAB}${TP_SUB}")
+OPTIONS+=("${KBD_ICON}${TAB}${KBD_LABEL}${TAB}${KBD_SUB}")
+OPTIONS+=("⚙️${TAB}Keyboard Backlight Schedule & Settings${TAB}Configure auto on/off schedule, ALS sensor, and brightness")
+OPTIONS+=("🔄${TAB}Restart Omarchy Shell${TAB}Restart status bar and background widgets")
+OPTIONS+=("📊${TAB}View Input Diagnostic Status${TAB}Show cursor position and active hardware states")
+
+CHOICE_RAW=$(omarchy-menu-select "Touch & Input Controls" "${OPTIONS[@]}" -- --width 500)
+
+[ -z "$CHOICE_RAW" ] && exit 0
+
+CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
+
+case "$CHOICE" in
+  *"Touchscreen"*)
+    omarchy-toggle-touchscreen
+    ;;
+  *"Touchpad"*)
+    omarchy-toggle-touchpad
+    ;;
+  *"Keyboard Backlight Schedule"*)
+    asus-kbd-menu
+    ;;
+  *"Keyboard Backlight"*)
+    asus-kbd-sync toggle
+    ;;
+  *"Restart Omarchy Shell"*)
+    omarchy restart shell
+    notify-send -i preferences-desktop-theme "Omarchy Shell" "Shell restarted successfully"
+    ;;
+  *"Diagnostic Status"*)
+    CUR_POS=$(hyprctl cursorpos 2>/dev/null || echo "Unknown")
+    TS_DEV=$(omarchy-hw-touchscreen 2>/dev/null || echo "Not detected")
+    TP_DEV=$(omarchy-hw-touchpad 2>/dev/null || echo "Not detected")
+    MSG="Cursor: $CUR_POS"$'\n'"Touchscreen: $TS_STATUS ($TS_DEV)"$'\n'"Touchpad: $TP_STATUS ($TP_DEV)"$'\n'"Keyboard Backlight: $KBD_STATUS ($KBD_CUR)"
+    notify-send -i input-touchscreen "Input Diagnostic Status" "$MSG"
+    ;;
+esac

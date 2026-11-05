@@ -26,6 +26,25 @@ TAB=$'\t'
 MENU_OPTIONS=()
 MENU_OPTIONS+=("🔄${TAB}Switch Workflow${TAB}Current: $ACTIVE_ICON $ACTIVE_NAME${ACTIVE_DESC:+ — $ACTIVE_DESC}")
 
+# Active agent detection & management options
+RUNNING_AGENTS=()
+pgrep -f 'agy' >/dev/null 2>&1 && RUNNING_AGENTS+=("agy")
+pgrep -f 'hermes' >/dev/null 2>&1 && RUNNING_AGENTS+=("hermes")
+pgrep -f 'claude' >/dev/null 2>&1 && RUNNING_AGENTS+=("claude")
+pgrep -f 'codex' >/dev/null 2>&1 && RUNNING_AGENTS+=("codex")
+pgrep -f 'opencode' >/dev/null 2>&1 && RUNNING_AGENTS+=("opencode")
+pgrep -f 'aider' >/dev/null 2>&1 && RUNNING_AGENTS+=("aider")
+
+if [ "${#RUNNING_AGENTS[@]}" -gt 0 ]; then
+    AGENTS_STR=$(IFS=', '; echo "${RUNNING_AGENTS[*]}")
+    MENU_OPTIONS+=("🤖${TAB}Active Agents: ${AGENTS_STR} [RUNNING]${TAB}Focus existing sessions or open agent launcher")
+    MENU_OPTIONS+=("🛑${TAB}Kill Active Agent / Process (${AGENTS_STR})${TAB}Terminate running background agent process or kill all")
+else
+    MENU_OPTIONS+=("🤖${TAB}AI Agents & Sessions [IDLE]${TAB}Launch Antigravity, Hermes, Aider, Claude, Codex")
+fi
+
+MENU_OPTIONS+=("📈${TAB}View Omarchy 4.5.0 Token Dashboard${TAB}Open live token burn meters, weekly limits & model charts")
+
 for i in "${!TOOL_NAMES[@]}"; do
     action_preview="${TOOL_ACTIONS[$i]}"
     MENU_OPTIONS+=("${TOOL_ICONS[$i]}${TAB}Launch: ${TOOL_NAMES[$i]}${TAB}$action_preview")
@@ -152,5 +171,14 @@ case "$CHOICE" in
         ;;
     *"Edit Workflows JSON File"*)
         omarchy-launch-or-focus-tui nvim "$CONFIG_FILE"
+        ;;
+    *"Active Agents:"*|*"AI Agents & Sessions"*)
+        asus-agent-menu
+        ;;
+    *"View Omarchy 4.5.0 Token Dashboard"*)
+        omarchy-shell shell toggle omarchy.agents
+        ;;
+    *"Kill Active Agent"*)
+        omarchy-kill-agent
         ;;
 esac
