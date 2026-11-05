@@ -1,0 +1,76 @@
+#!/bin/bash
+# omarchy-process-cleaner: Interactive background process & resource cleaner for Omarchy
+
+TAB=$'\t'
+
+# Get system summary
+MEM_AVAIL=$(free -h | awk '/^Mem:/ {print $7}')
+MEM_USED=$(free -h | awk '/^Mem:/ {print $3}')
+MEM_TOTAL=$(free -h | awk '/^Mem:/ {print $2}')
+LOAD_AVG=$(awk '{print $1", "$2}' /proc/loadavg)
+
+quick_cleanup() {
+    pkill -f "omarchy-menu-select" 2>/dev/null || true
+    sync 2>/dev/null || true
+    omarchy-notification-send -g 🧹 "System Cleanup" "Cleaned orphaned tasks & synced buffers.\nFree RAM: $MEM_AVAIL / $MEM_TOTAL"
+}
+
+if [ "$1" = "--quick" ]; then
+    quick_cleanup
+    exit 0
+fi
+
+# Build top process list (sort by CPU, then memory)
+mapfile -t TOP_PROCS < <(ps -u "$USER" -o pid,%cpu,%mem,comm --sort=-%cpu | awk 'NR>1 && $2>0.5 && $4!="ps" && $4!="awk" && $4!="omarchy-process" && $4!="bash" {printf "%s\t%s%%\t%s%%\t%s\n", $1, $2, $3, $4}' | head -n 8)
+
+OPTIONS=()
+OPTIONS+=("🧹${TAB}Quick Clean: Buffers & Orphaned Tasks${TAB}Drop stale menu processes & sync buffers (Free RAM: $MEM_AVAIL)")
+OPTIONS+=("🛑${TAB}Kill AI Agent Sessions${TAB}Terminate background agy, claude, and codex processes")
+OPTIONS+=("📊${TAB}Open Task Manager (btop)${TAB}Launch full-screen interactive monitor in Kitty")
+
+if [ ${#TOP_PROCS[@]} -gt 0 ]; then
+    for p in "${TOP_PROCS[@]}"; do
+        IFS=$'\t' read -r pid cpu mem comm <<< "$p"
+        OPTIONS+=("⚡${TAB}PID $pid: $comm (CPU: $cpu, RAM: $mem)${TAB}Click to choose termination option for PID $pid")
+    done
+fi
+
+CHOICE_RAW=$(omarchy-menu-select "System Resources (Load: $LOAD_AVG | RAM: $MEM_USED/$MEM_TOTAL)" "${OPTIONS[@]}" -- --width 560)
+[ -z "$CHOICE_RAW" ] && exit 0
+
+CHOICE=$(echo "$CHOICE_RAW" | cut -f1)
+
+case "$CHOICE" in
+    *"Quick Clean"*)
+        quick_cleanup
+        ;;
+    *"Kill AI Agent"*)
+        pkill -x agy 2>/dev/null || true
+        pkill -x claude 2>/dev/null || true
+        pkill -x codex 2>/dev/null || true
+        omarchy-notification-send -g 🛑 "AI Agents Terminated" "Killed background agy, claude, and codex processes."
+        ;;
+    *"Open Task Manager"*)
+        omarchy-launch-or-focus btop "kitty --title btop -e btop"
+        ;;
+    *"PID "*)
+        PID=$(echo "$CHOICE" | awk '{print $2}' | tr -d ':')
+        COMM=$(echo "$CHOICE" | awk '{print $3}')
+        ACTION=$(omarchy-menu-select "Action for $COMM (PID $PID)" \
+            "🛑${TAB}Terminate Gracefully (SIGTERM)${TAB}Send SIGTERM to process $PID" \
+            "💥${TAB}Force Kill Immediately (SIGKILL)${TAB}Send SIGKILL -9 to process $PID" \
+            "📋${TAB}Inspect Process in Kitty${TAB}View process tree and info for PID $PID" \
+            -- --width 460)
+        case "$ACTION" in
+            *"Terminate Gracefully"*)
+                kill -15 "$PID" 2>/dev/null && omarchy-notification-send -g 🛑 "Terminated" "Sent SIGTERM to $COMM (PID $PID)"
+                ;;
+            *"Force Kill"*)
+                kill -9 "$PID" 2>/dev/null && omarchy-notification-send -g 💥 "Force Killed" "Sent SIGKILL to $COMM (PID $PID)"
+                ;;
+            *"Inspect Process"*)
+                kitty --hold -e bash -c "ps -fp $PID; echo ''; pstree -p $PID 2>/dev/null; echo ''; read -p 'Press enter to exit'" &
+                ;;
+        esac
+        ;;
+esac
