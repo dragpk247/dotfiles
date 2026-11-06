@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updated_at": "2026-11-05T15:32:53.361499",
+  "updated_at": "2026-11-06T05:41:57.175269",
   "total_plugins": 18,
   "upstream_count": 8,
   "custom_count": 10,
@@ -36,8 +36,8 @@
       "name": "System Updates",
       "description": "Arch, AUR, Flatpak, Omarchy, plugins, and mise update indicator with per-repo update buttons.",
       "version": "1.5.0",
-      "repo_url": "https://github.com/JJDizz1L/dizziee.system-updates.git",
-      "commit": "5bdd67ac3be06035dbc8ba20440a5a476156d4f2",
+      "repo_url": "https://github.com/dragpk247/dizziee.system-updates.git",
+      "commit": "0b2f66edcc7a1284e3e600d7b285ed0b2c050cd9",
       "branch": "master",
       "kinds": [
         "bar-widget"

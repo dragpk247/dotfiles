@@ -1,16 +1,22 @@
 {
   "bar": {
-    "background": "none",
+    "background": "glassy",
     "layout": {
       "center": [
         {
-          "format": "dddd HH:mm",
+          "format": "ddd HH:mm",
           "formatAlt": "d MMMM 'W'ww yyyy",
           "id": "omarchy.clock",
           "verticalFormat": "HH\n—\nmm"
         }
       ],
       "centerBegin": [
+        {
+          "id": "jpi.menu"
+        },
+        {
+          "id": "omarchy.workspaces"
+        },
         {
           "id": "omarchy.indicators"
         }
@@ -19,8 +25,8 @@
         {
           "cities": [
             {
-              "name": "Eastern",
-              "zone": "US/Eastern"
+              "name": "New York",
+              "zone": "America/New_York"
             },
             {
               "name": "London",
@@ -37,23 +43,31 @@
             {
               "name": "Los Angeles",
               "zone": "America/Los_Angeles"
+            },
+            {
+              "lat": 19.07283,
+              "lon": 72.88261,
+              "name": "Mumbai",
+              "region": "Maharashtra, IN",
+              "zone": "Asia/Kolkata"
+            },
+            {
+              "lat": 29.76328,
+              "lon": -95.36327,
+              "name": "Houston",
+              "region": "Texas, US",
+              "zone": "America/Chicago"
             }
           ],
           "id": "omarchy.elsewhen"
         },
         {
           "id": "omarchy.weather"
-        },
-        {
-          "id": "omarchy.system-update"
         }
       ],
       "left": [
         {
-          "id": "jpi.menu"
-        },
-        {
-          "id": "omarchy.workspaces"
+          "id": "omarchy.keyboard-layout"
         }
       ],
       "right": [
@@ -61,31 +75,19 @@
           "id": "omarchy.tray"
         },
         {
-          "id": "io.github.x3me.nexthop"
-        },
-        {
-          "id": "ucmz851.omasecurity"
-        },
-        {
-          "id": "robzolkos.github"
+          "id": "io.github.diegopluna.argus"
         },
         {
           "id": "dizziee.system-updates"
         },
         {
-          "id": "dizziee.auto-wallpaper"
+          "id": "robzolkos.github"
         },
         {
-          "id": "io.github.diegopluna.argus"
-        },
-        {
-          "id": "user.apps-menu"
+          "id": "user.touch-toggle"
         },
         {
           "id": "user.dev-workflows"
-        },
-        {
-          "id": "user.process-cleaner"
         },
         {
           "id": "omarchy.bluetooth"
@@ -100,10 +102,11 @@
           "id": "jpi.monitor"
         },
         {
-          "id": "omarchy.power",
+          "id": "jpi.power",
           "showPercentage": true
         }
-      ]
+      ],
+      "tray": []
     },
     "position": "top"
   },
@@ -111,7 +114,13 @@
     "jpi.menu"
   ],
   "disabledPlugins": [
-    "omarchy.menu"
+    "dizziee.auto-wallpaper",
+    "io.github.x3me.nexthop",
+    "omarchy.menu",
+    "ucmz851.omasecurity",
+    "user.apps-menu",
+    "user.kbd-backlight",
+    "user.process-cleaner"
   ],
   "idle": {
     "lock": 180,
