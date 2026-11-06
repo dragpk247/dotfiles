@@ -30,32 +30,38 @@ o.rebind("SUPER + SHIFT + A", "Aider (Desktop Free Qwen)", "kitty --class aider-
 o.rebind("SUPER + ALT + A", "Aider (Claude Haiku)", "kitty --class aider-float -e bash -ic ah")
 o.bind("SUPER + GRAVE", "Dropdown scratchpad terminal", "toggle-dropdown-terminal")
 o.rebind("SUPER + SHIFT + T", "Extract text from screen (OCR)", "omarchy capture text")
-o.bind("SUPER + ALT + B", "Toggle battery limit (80% / 100%)", "asus-battery-toggle")
 hl.unbind("SUPER + K")
-o.rebind("SUPER + ALT + K", "Toggle keyboard backlight", "asus-kbd-sync toggle", { locked = true })
 o.bind("SUPER + U", "Dizzie System Updates", { panel = "dizziee.system-updates" })
-o.bind("SUPER + ALT + R", "Cycle ROG fan & performance profile", "asus-profile-toggle")
-o.bind("SUPER + ALT + G", "Toggle GPU (Integrated / Hybrid) & power profile", "gpu-profile-switch toggle")
 o.bind("SUPER + ALT + P", "Fuzzy project workspace switcher", "project-switcher")
-o.bind("SUPER + ALT + T", "Toggle tablet / tent mode", "asus-tablet-mode")
 o.bind("SUPER + ALT + W", "Dev Workflows & Tool Stacks", "omarchy-workflow-menu")
 o.bind("SUPER + ALT + H", "Launch HexaCore 6-Workspace Workflow", "workflow-hexacore")
-
--- Screen Orientation Shortcuts
-o.bind("SUPER + ALT + UP", "Screen orientation: Normal", "asus-rotate normal")
-o.bind("SUPER + ALT + DOWN", "Screen orientation: Inverted (Tent mode)", "asus-rotate inverted")
-o.bind("SUPER + ALT + RIGHT", "Screen orientation: 90° portrait", "asus-rotate right")
-o.bind("SUPER + ALT + LEFT", "Screen orientation: 270° portrait", "asus-rotate left")
 
 -- AI Agent Shortcuts
 o.rebind("SUPER + A", "Antigravity CLI", "omarchy-launch-or-focus agy 'kitty --class agy --title agy -e agy'")
 o.bind("SUPER + SHIFT + H", "Hermes Agent", "omarchy-launch-or-focus hermes 'kitty --title hermes -e hermes'")
 
--- ASUS ROG Hardware Media Controls (M4 & Volume Keys)
-o.bind("XF86Launch1", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
-o.bind("XF86Tools", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
-o.bind("CTRL + XF86AudioRaiseVolume", "Next track", { ipc = "media.next" }, { locked = true })
-o.bind("CTRL + XF86AudioLowerVolume", "Previous track", { ipc = "media.previous" }, { locked = true })
+-- ASUS ROG Flow X13 Laptop Specific Controls
+local hostname = (io.popen("hostname 2>/dev/null"):read("*l") or ""):lower()
+if hostname:find("laptop") then
+  -- Battery limit toggle & Keyboard Backlight Sync
+  o.bind("SUPER + ALT + B", "Toggle battery limit (80% / 100%)", "asus-battery-toggle")
+  o.rebind("SUPER + ALT + K", "Toggle keyboard backlight", "asus-kbd-sync toggle", { locked = true })
+  o.bind("SUPER + ALT + R", "Cycle ROG fan & performance profile", "asus-profile-toggle")
+  o.bind("SUPER + ALT + G", "Toggle GPU (Integrated / Hybrid) & power profile", "gpu-profile-switch toggle")
+  o.bind("SUPER + ALT + T", "Toggle tablet / tent mode", "asus-tablet-mode")
+
+  -- Screen Orientation (Tent / Tablet)
+  o.bind("SUPER + ALT + UP", "Screen orientation: Normal", "asus-rotate normal")
+  o.bind("SUPER + ALT + DOWN", "Screen orientation: Inverted (Tent mode)", "asus-rotate inverted")
+  o.bind("SUPER + ALT + RIGHT", "Screen orientation: 90° portrait", "asus-rotate right")
+  o.bind("SUPER + ALT + LEFT", "Screen orientation: 270° portrait", "asus-rotate left")
+
+  -- ASUS ROG Hardware Media Controls (M4 & Chassis Volume Keys)
+  o.bind("XF86Launch1", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
+  o.bind("XF86Tools", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
+  o.bind("CTRL + XF86AudioRaiseVolume", "Next track", { ipc = "media.next" }, { locked = true })
+  o.bind("CTRL + XF86AudioLowerVolume", "Previous track", { ipc = "media.previous" }, { locked = true })
+end
 
 -- Dictation keys from before Alt + Space and Right Alt became the defaults.
 -- Remove these lines to give the keys back to applications.
