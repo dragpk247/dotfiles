@@ -51,6 +51,12 @@ o.bind("SUPER + ALT + LEFT", "Screen orientation: 270° portrait", "asus-rotate 
 o.rebind("SUPER + A", "Antigravity CLI", "omarchy-launch-or-focus agy 'kitty --class agy --title agy -e agy'")
 o.bind("SUPER + SHIFT + H", "Hermes Agent", "omarchy-launch-or-focus hermes 'kitty --title hermes -e hermes'")
 
+-- ASUS ROG Hardware Media Controls (M4 & Volume Keys)
+o.bind("XF86Launch1", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
+o.bind("XF86Tools", "Play / Pause media", { ipc = "media.playPause" }, { locked = true })
+o.bind("CTRL + XF86AudioRaiseVolume", "Next track", { ipc = "media.next" }, { locked = true })
+o.bind("CTRL + XF86AudioLowerVolume", "Previous track", { ipc = "media.previous" }, { locked = true })
+
 -- Dictation keys from before Alt + Space and Right Alt became the defaults.
 -- Remove these lines to give the keys back to applications.
 if o.dictation_installed and o.dictation_installed() then
